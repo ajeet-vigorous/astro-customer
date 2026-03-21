@@ -1,0 +1,50 @@
+.chatroom-page { display: flex; flex-direction: column; height: calc(100vh - 80px); background: #f5f0ff; }
+
+/* Header */
+.chatroom-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; background: linear-gradient(135deg, #1a0533, #4c1d95); color: #fff; }
+.chatroom-astro-info { display: flex; align-items: center; gap: 12px; }
+.chatroom-astro-info img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); }
+.chatroom-astro-info h4 { margin: 0; font-size: 1rem; }
+.chat-status-badge { font-size: 0.72rem; padding: 2px 10px; border-radius: 12px; font-weight: 600; }
+.chat-status-badge.pending { background: #f59e0b; color: #fff; }
+.chat-status-badge.accepted { background: #10b981; color: #fff; }
+.chat-status-badge.completed { background: #6b7280; color: #fff; }
+.chatroom-timer { display: flex; align-items: center; gap: 12px; }
+.timer-display { font-size: 1.3rem; font-weight: 700; font-family: monospace; background: rgba(255,255,255,0.15); padding: 6px 14px; border-radius: 10px; }
+.timer-display.warning { color: #fbbf24; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.5; } }
+.end-chat-btn { background: #ef4444; color: #fff; border: none; padding: 8px 18px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.85rem; }
+.end-chat-btn:hover { background: #dc2626; }
+
+/* System Messages (WhatsApp style) */
+.system-message { align-self: center; background: #e8dff5; color: #4a3570; padding: 8px 18px; border-radius: 8px; font-size: 0.82rem; text-align: center; max-width: 85%; margin: 10px auto; display: flex; align-items: center; gap: 8px; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+.system-message.pending { background: #fef3c7; color: #92400e; }
+.system-message.accepted { background: #d1fae5; color: #065f46; }
+.system-message.ended { background: #f3f4f6; color: #6b7280; }
+.system-spinner { width: 14px; height: 14px; border: 2px solid rgba(146,64,14,0.3); border-top-color: #92400e; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Messages */
+.chatroom-messages { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 10px; }
+.no-messages { text-align: center; color: #9ca3af; padding: 40px; }
+.chat-bubble { max-width: 70%; padding: 10px 16px; border-radius: 16px; position: relative; }
+.chat-bubble.sent { align-self: flex-end; background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; border-bottom-right-radius: 4px; }
+.chat-bubble.received { align-self: flex-start; background: #fff; color: #1a0533; border-bottom-left-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.bubble-text { margin: 0; font-size: 0.92rem; line-height: 1.5; word-wrap: break-word; }
+.chat-bubble.sent .bubble-time { color: rgba(255,255,255,0.7); }
+.chat-bubble.received .bubble-time { color: #9ca3af; }
+.bubble-time { font-size: 0.68rem; display: block; text-align: right; margin-top: 4px; }
+
+/* Input */
+.chatroom-input { display: flex; gap: 10px; padding: 14px 24px; background: #fff; border-top: 1px solid #e0d4f5; }
+.chatroom-input input { flex: 1; padding: 12px 16px; border: 2px solid #e0d4f5; border-radius: 24px; font-size: 0.95rem; outline: none; }
+.chatroom-input input:focus { border-color: #7c3aed; }
+.chatroom-input button { background: #7c3aed; color: #fff; border: none; padding: 12px 24px; border-radius: 24px; font-weight: 600; cursor: pointer; font-size: 0.95rem; }
+.chatroom-input button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 768px) {
+  .chatroom-header { padding: 10px 14px; }
+  .chatroom-messages { padding: 14px; }
+  .chatroom-input { padding: 10px 14px; }
+  .chat-bubble { max-width: 85%; }
+}

@@ -1,0 +1,26 @@
+.panchang-page { padding-bottom: 40px; }
+
+/* Date selector bar */
+.panchang-date-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 24px 0; }
+.panchang-date-bar button { padding: 10px 24px; border: 2px solid #e0d4f5; border-radius: 50px; background: #fff; color: #1a0533; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+.panchang-date-bar button.active, .panchang-date-bar button:hover { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+.panchang-date-input { padding: 10px 14px; border: 2px solid #7c3aed; border-radius: 10px; font-size: 0.95rem; outline: none; }
+
+/* Two column grid */
+.panchang-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 8px; }
+
+/* Cards */
+.panchang-card { background: #fff; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); border: 1px solid #f0e6ff; overflow: hidden; }
+.panchang-card-header { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; padding: 14px 20px; font-weight: 700; font-size: 1rem; text-align: center; }
+.panchang-card-body { padding: 8px 0; }
+
+/* Rows */
+.panchang-row { display: flex; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #f5f0ff; }
+.panchang-row:last-child { border-bottom: none; }
+.panchang-label { font-weight: 600; color: #1a0533; font-size: 0.9rem; }
+.panchang-value { color: #6b7280; font-size: 0.9rem; text-align: right; max-width: 55%; }
+
+@media (max-width: 768px) {
+  .panchang-grid { grid-template-columns: 1fr; }
+  .panchang-date-bar { justify-content: center; }
+}

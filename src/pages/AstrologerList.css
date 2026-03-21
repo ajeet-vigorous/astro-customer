@@ -1,0 +1,37 @@
+.astrologer-list-page { padding-bottom: 40px; }
+.list-hero { background: linear-gradient(135deg, #1a0533 0%, #2d1b69 50%, #4c1d95 100%); color: #fff; padding: 48px 20px; text-align: center; }
+.list-hero h2 { font-size: 2rem; margin-bottom: 8px; }
+.list-hero p { color: #d4c4f0; font-size: 1rem; }
+.search-bar { display: flex; gap: 12px; margin: 28px 0; }
+.search-bar input { flex: 1; padding: 12px 16px; border: 2px solid #e0d4f5; border-radius: 12px; font-size: 0.95rem; outline: none; transition: border-color 0.3s; }
+.search-bar input:focus { border-color: #7c3aed; }
+.search-bar button { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; border: none; padding: 12px 28px; border-radius: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+.search-bar button:hover { box-shadow: 0 4px 12px rgba(124,58,237,0.3); }
+.astro-list-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.astro-list-card { background: #fff; border-radius: 16px; overflow: hidden; text-decoration: none; color: #1a0533; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: all 0.3s; border: 1px solid #f0e6ff; display: flex; flex-direction: column; }
+.astro-list-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(124,58,237,0.15); }
+.astro-list-img { position: relative; text-align: center; padding-top: 20px; }
+.astro-list-img img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #e0d4f5; }
+.status-badge { position: absolute; top: 12px; right: 12px; padding: 4px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; color: #fff; }
+.status-badge.online { background: #10b981; }
+.status-badge.busy { background: #f59e0b; }
+.status-badge.offline { background: #9ca3af; }
+.astro-list-info { padding: 16px; text-align: center; flex: 1; display: flex; flex-direction: column; }
+.astro-list-info h4 { font-size: 1.05rem; margin-bottom: 4px; }
+.astro-list-skill { color: #7c3aed; font-size: 0.85rem; margin: 0 0 2px; }
+.astro-list-lang { color: #6b7280; font-size: 0.8rem; margin: 0 0 2px; }
+.astro-list-exp { color: #6b7280; font-size: 0.8rem; margin: 0 0 8px; }
+.astro-list-bottom { display: flex; justify-content: center; gap: 16px; align-items: center; margin-bottom: 12px; }
+.astro-list-rating { display: flex; align-items: center; gap: 4px; }
+.astro-list-rating .star { color: #fbbf24; }
+.astro-list-price { font-weight: 700; color: #059669; }
+.astro-action-btn { width: 100%; padding: 10px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.9rem; transition: all 0.3s; margin-top: auto; }
+.astro-action-btn.call-btn { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a0533; }
+.astro-action-btn.chat-btn { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+.astro-action-btn:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 32px; }
+.pagination button { background: #7c3aed; color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+.pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+.no-data { text-align: center; padding: 60px 20px; color: #6b7280; font-size: 1.1rem; }
+@media (max-width: 768px) { .astro-list-grid { grid-template-columns: repeat(2, 1fr); } .list-hero h2 { font-size: 1.5rem; } }
+@media (max-width: 480px) { .astro-list-grid { grid-template-columns: 1fr; } .search-bar { flex-direction: column; } }

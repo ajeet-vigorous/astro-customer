@@ -1,0 +1,38 @@
+.puja-list-page, .puja-detail-page { padding-bottom: 40px; }
+.puja-sec-title { font-size: 1.3rem; color: #1a0533; margin: 24px 0 16px; }
+.puja-cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.puja-cat-card { background: #fff; border-radius: 14px; overflow: hidden; text-align: center; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: all 0.3s; border: 2px solid #f0e6ff; }
+.puja-cat-card.active, .puja-cat-card:hover { border-color: #7c3aed; box-shadow: 0 8px 24px rgba(124,58,237,0.15); }
+.puja-cat-card img { width: 100%; height: 140px; object-fit: cover; }
+.puja-cat-card h5 { padding: 12px; margin: 0; font-size: 0.95rem; }
+.puja-items-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.puja-item-card { background: #fff; border-radius: 14px; overflow: hidden; text-decoration: none; color: #1a0533; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: all 0.3s; border: 1px solid #f0e6ff; }
+.puja-item-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(124,58,237,0.15); }
+.puja-item-card img { width: 100%; height: 180px; object-fit: cover; }
+.puja-item-info { padding: 16px; }
+.puja-item-info h4 { font-size: 1rem; margin-bottom: 6px; }
+.puja-item-info p { color: #6b7280; font-size: 0.82rem; margin: 0 0 10px; line-height: 1.4; }
+.puja-item-bottom { display: flex; justify-content: space-between; align-items: center; }
+.puja-price { font-size: 1.1rem; font-weight: 700; color: #059669; }
+.puja-book-btn { background: #7c3aed; color: #fff; border: none; padding: 8px 18px; border-radius: 8px; font-weight: 600; font-size: 0.82rem; cursor: pointer; }
+.puja-detail-nav { padding: 20px 0; }
+.puja-detail-nav a { color: #7c3aed; text-decoration: none; font-weight: 600; }
+.puja-detail-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+.puja-detail-img { width: 100%; border-radius: 16px; max-height: 400px; object-fit: cover; }
+.puja-detail-right h1 { font-size: 1.8rem; color: #1a0533; margin-bottom: 12px; }
+.puja-detail-price { font-size: 1.5rem; font-weight: 700; color: #059669; margin: 0 0 12px; }
+.puja-meta { color: #6b7280; font-size: 0.9rem; margin: 0 0 6px; }
+.puja-detail-book { background: linear-gradient(135deg, #7c3aed, #5b21b6); color: #fff; border: none; padding: 14px 36px; border-radius: 50px; font-size: 1.05rem; font-weight: 600; cursor: pointer; margin-top: 20px; transition: all 0.3s; }
+.puja-detail-book:hover { box-shadow: 0 6px 20px rgba(124,58,237,0.3); transform: translateY(-2px); }
+.puja-detail-desc { margin-top: 32px; }
+.puja-detail-desc h3 { font-size: 1.3rem; color: #1a0533; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #f0e6ff; }
+.puja-detail-desc div { color: #374151; line-height: 1.7; }
+.puja-faq { margin-top: 32px; }
+.puja-faq h3 { font-size: 1.3rem; color: #1a0533; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #f0e6ff; }
+.faq-item { border: 1px solid #f0e6ff; border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+.faq-q { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; cursor: pointer; font-weight: 600; background: #f9f5ff; transition: background 0.3s; }
+.faq-q:hover { background: #ede5ff; }
+.faq-toggle { font-size: 1.3rem; color: #7c3aed; }
+.faq-a { padding: 14px 18px; color: #374151; line-height: 1.6; background: #fff; }
+@media (max-width: 1024px) { .puja-cat-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) { .puja-detail-layout { grid-template-columns: 1fr; } .puja-cat-grid { grid-template-columns: repeat(2, 1fr); } .puja-items-grid { grid-template-columns: 1fr; } }
