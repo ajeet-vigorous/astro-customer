@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { accountApi } from '../api/services';
+import { callApi } from '../api/services';
+import { useAuth } from '../context/AuthContext';
 import './Account.css';
 
 const CallHistory = () => {
+  const { user } = useAuth();
   const [calls, setCalls] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetch = async () => {
       try {
-        const res = await accountApi.getCallHistory({});
+        const res = await callApi.getCallHistory({ userId: user?.id, startIndex: 0, fetchRecord: 50 });
         const d = res.data?.data || res.data;
         setCalls(Array.isArray(d) ? d : d?.recordList || []);
       } catch (err) {
@@ -18,7 +20,7 @@ const CallHistory = () => {
       setLoading(false);
     };
     fetch();
-  }, []);
+  }, [user]);
 
   if (loading) return <div className="home-loading"><div className="spinner"></div><p>Loading...</p></div>;
 
@@ -37,9 +39,9 @@ const CallHistory = () => {
                 </div>
                 <div className="history-info">
                   <h4>{call.astrologerName || call.name || 'Astrologer'}</h4>
-                  <p className="history-meta">Duration: {call.duration || call.call_duration || 0} min</p>
-                  <p className="history-meta">Amount: &#8377;{call.amount || call.deduction || 0}</p>
-                  {call.createdAt && <p className="history-date">{new Date(call.createdAt).toLocaleDateString()}</p>}
+                  <p className="history-meta">Duration: {call.totalMin || call.call_duration || 0} min</p>
+                  <p className="history-meta">Amount: &#8377;{parseFloat(call.deduction || call.amount || 0).toFixed(2)}</p>
+                  {call.created_at && <p className="history-date">{new Date(call.created_at).toLocaleDateString('en-IN')}</p>}
                 </div>
                 <span className={`history-status ${(call.status || '').toLowerCase()}`}>{call.status || 'Completed'}</span>
               </div>

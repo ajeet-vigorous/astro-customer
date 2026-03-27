@@ -7,7 +7,10 @@
 .sign-date { color: #9ca3af; font-size: 0.8rem; margin: 0; }
 .horo-nav { padding: 20px 0 10px; }
 .horo-nav a { color: #7c3aed; text-decoration: none; font-weight: 600; }
-.horo-tabs { display: flex; gap: 10px; margin: 16px 0 24px; flex-wrap: wrap; }
+.horo-tabs-row { display: flex; justify-content: space-between; align-items: center; margin: 16px 0 24px; flex-wrap: wrap; gap: 12px; }
+.lang-select { padding: 8px 14px; border: 2px solid #e0d4f5; border-radius: 8px; font-size: 0.9rem; font-weight: 600; color: #1a0533; outline: none; cursor: pointer; }
+.lang-select:focus { border-color: #7c3aed; }
+.horo-tabs { display: flex; gap: 10px; flex-wrap: wrap; }
 .horo-tabs button { padding: 10px 24px; border: 2px solid #e0d4f5; border-radius: 50px; background: #fff; color: #1a0533; font-weight: 600; cursor: pointer; transition: all 0.3s; }
 .horo-tabs button.active, .horo-tabs button:hover { background: #7c3aed; color: #fff; border-color: #7c3aed; }
 .capitalize { text-transform: capitalize; }

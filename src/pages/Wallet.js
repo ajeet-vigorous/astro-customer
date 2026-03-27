@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { walletApi } from '../api/services';
+import { walletApi, couponApi } from '../api/services';
 import { toast } from 'react-toastify';
 import './Account.css';
 
@@ -12,6 +12,9 @@ const Wallet = () => {
   const [recharging, setRecharging] = useState(false);
   const [paymentConfig, setPaymentConfig] = useState(null);
   const [selectedGateway, setSelectedGateway] = useState('razorpay');
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponLoading, setCouponLoading] = useState(false);
 
   useEffect(() => {
     fetchWalletData();
@@ -56,16 +59,38 @@ const Wallet = () => {
     setLoading(false);
   };
 
+  const handleApplyCoupon = async (amount) => {
+    const rechargeAmount = amount || customAmount;
+    if (!couponCode.trim()) { toast.error('Enter a coupon code'); return; }
+    if (!rechargeAmount || parseFloat(rechargeAmount) <= 0) { toast.error('Select a recharge amount first'); return; }
+    setCouponLoading(true);
+    try {
+      const res = await couponApi.apply({ couponCode: couponCode.trim(), amount: parseFloat(rechargeAmount) });
+      if (res.data?.status === 200) {
+        setAppliedCoupon(res.data.coupon);
+        toast.success(`Coupon applied! ₹${res.data.coupon.discount} extra`);
+      } else {
+        setAppliedCoupon(null);
+        toast.error(res.data?.message || 'Invalid coupon');
+      }
+    } catch (err) { toast.error(err.response?.data?.message || 'Coupon error'); setAppliedCoupon(null); }
+    setCouponLoading(false);
+  };
+
+  const removeCoupon = () => { setAppliedCoupon(null); setCouponCode(''); };
+
   const handleRecharge = async (amount, cashback) => {
     const rechargeAmount = amount || customAmount;
     if (!rechargeAmount || parseFloat(rechargeAmount) <= 0) {
       toast.error('Please enter a valid amount'); return;
     }
+    const couponDiscount = appliedCoupon ? appliedCoupon.discount : 0;
+    const totalCashback = (cashback || 0) + couponDiscount;
     setRecharging(true);
     try {
       // Step 1: Create payment record
       const res = await walletApi.addPayment({
-        amount: parseFloat(rechargeAmount), cashback_amount: cashback || 0,
+        amount: parseFloat(rechargeAmount), cashback_amount: totalCashback,
         payment_for: 'wallet', paymentMode: selectedGateway
       });
       const d = res.data;
@@ -216,6 +241,22 @@ const Wallet = () => {
             <input type="number" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)} placeholder="Enter amount" min="10" />
             <button onClick={() => handleRecharge()} disabled={!customAmount || recharging}>{recharging ? 'Processing...' : 'Recharge'}</button>
           </div>
+        </div>
+
+        {/* Coupon Section */}
+        <div className="coupon-section">
+          <h4>Have a coupon?</h4>
+          {appliedCoupon ? (
+            <div className="coupon-applied">
+              <span className="coupon-tag">&#10003; {appliedCoupon.couponCode} — ₹{appliedCoupon.discount} extra</span>
+              <button className="coupon-remove" onClick={removeCoupon}>Remove</button>
+            </div>
+          ) : (
+            <div className="coupon-input-row">
+              <input type="text" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} placeholder="Enter coupon code" />
+              <button onClick={() => handleApplyCoupon()} disabled={couponLoading}>{couponLoading ? '...' : 'Apply'}</button>
+            </div>
+          )}
         </div>
 
         {transactions.length > 0 && (

@@ -48,3 +48,19 @@
   .chatroom-input { padding: 10px 14px; }
   .chat-bubble { max-width: 85%; }
 }
+
+/* Rating Popup */
+.rating-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.rating-modal { background: #fff; border-radius: 16px; padding: 32px; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.rating-modal h3 { font-size: 1.3rem; color: #1a0533; margin: 0 0 6px; }
+.rating-subtitle { color: #6b7280; font-size: 0.9rem; margin: 0 0 20px; }
+.rating-stars { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.rating-star { font-size: 2.2rem; color: #d1d5db; cursor: pointer; transition: color 0.2s; }
+.rating-star.active { color: #f59e0b; }
+.rating-star:hover { color: #fbbf24; }
+.rating-textarea { width: 100%; padding: 12px; border: 2px solid #e0d4f5; border-radius: 10px; font-size: 0.95rem; resize: none; outline: none; font-family: inherit; }
+.rating-textarea:focus { border-color: #7c3aed; }
+.rating-actions { display: flex; gap: 10px; margin-top: 16px; }
+.rating-submit { flex: 1; padding: 12px; background: #7c3aed; color: #fff; border: none; border-radius: 10px; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
+.rating-submit:disabled { opacity: 0.5; }
+.rating-skip { padding: 12px 20px; background: none; border: 2px solid #d1d5db; border-radius: 10px; color: #6b7280; font-weight: 600; cursor: pointer; }

@@ -11,16 +11,17 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetch = async () => {
+    if (!user?.id) return;
+    const fetchData = async () => {
       try {
-        const res = await authApi.getProfile({ userId: user?.id || user?.userId });
+        const res = await authApi.getProfile({ userId: user.id });
         const d = res.data?.data || res.data;
         const profile = d?.recordList || (Array.isArray(d) ? d[0] : d);
         if (profile) {
           setForm({
             name: profile.name || '',
             email: profile.email || '',
-            contactNo: profile.contactNo || '',
+            contactNo: profile.contactNo || user.contactNo || '',
             gender: profile.gender || '',
             birthDate: profile.birthDate || '',
             birthPlace: profile.birthPlace || '',
@@ -32,8 +33,8 @@ const Profile = () => {
       }
       setLoading(false);
     };
-    fetch();
-  }, []);
+    fetchData();
+  }, [user]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 

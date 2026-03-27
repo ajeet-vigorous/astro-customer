@@ -8,12 +8,21 @@ const DailyHoroscope = () => {
   const [vedicList, setVedicList] = useState(null);
   const [tab, setTab] = useState('daily');
   const [loading, setLoading] = useState(true);
+  const [lang, setLang] = useState('en');
+  const [languages, setLanguages] = useState([]);
+
+  useEffect(() => {
+    horoscopeApi.getEnabledLanguages().then(res => {
+      const list = res.data?.recordList || [];
+      setLanguages(list.length ? list : [{ code: 'en', name: 'English' }]);
+    }).catch(() => setLanguages([{ code: 'en', name: 'English' }]));
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await horoscopeApi.getDaily({ horoscopeSignId: signId, langcode: 'en' });
+        const res = await horoscopeApi.getDaily({ horoscopeSignId: signId, langcode: lang });
         const d = res.data?.data || res.data;
         setVedicList(d?.vedicList || null);
       } catch (err) {
@@ -22,7 +31,7 @@ const DailyHoroscope = () => {
       setLoading(false);
     };
     fetchData();
-  }, [signId]);
+  }, [signId, lang]);
 
   const getActiveData = () => {
     if (!vedicList) return null;
@@ -52,12 +61,17 @@ const DailyHoroscope = () => {
         <div className="horo-nav">
           <Link to="/horoscope">&larr; All Signs</Link>
         </div>
-        <div className="horo-tabs">
-          {['daily', 'weekly', 'yearly'].map(t => (
-            <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
+        <div className="horo-tabs-row">
+          <div className="horo-tabs">
+            {['daily', 'weekly', 'yearly'].map(t => (
+              <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
+                {t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+          </div>
+          <select className="lang-select" value={lang} onChange={(e) => setLang(e.target.value)}>
+            {languages.map(l => <option key={l.code} value={l.code}>{l.name}</option>)}
+          </select>
         </div>
         {loading ? (
           <div className="home-loading"><div className="spinner"></div><p>Loading...</p></div>

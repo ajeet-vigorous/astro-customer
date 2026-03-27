@@ -1,0 +1,68 @@
+.callroom-page { min-height: 80vh; display: flex; align-items: center; justify-content: center; background: #1a0533; }
+.callroom-container { width: 100%; max-width: 600px; padding: 20px; }
+
+/* Status Screens */
+.call-status-screen { text-align: center; color: #fff; padding: 40px 20px; }
+.call-status-screen h3 { font-size: 1.5rem; margin: 16px 0 8px; }
+.call-status-screen p { color: #c4b5d8; font-size: 0.95rem; }
+.call-type-label { color: #a78bfa !important; font-weight: 600; }
+.call-waiting { margin-top: 12px; }
+
+/* Pulse Ring */
+.call-pulse-ring { position: relative; display: inline-block; }
+.call-pulse-ring::before { content: ''; position: absolute; inset: -15px; border-radius: 50%; border: 3px solid #7c3aed; animation: callPulse 1.5s infinite; }
+@keyframes callPulse { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(1.4); opacity: 0; } }
+
+.call-avatar { width: 100px; height: 100px; border-radius: 50%; background: #7c3aed; color: #fff; font-size: 2.5rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+.call-avatar.rejected { background: #ef4444; }
+.call-avatar.completed { background: #10b981; font-size: 2rem; }
+
+.call-spinner { width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #7c3aed; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Active Call */
+.call-active-screen { text-align: center; color: #fff; }
+
+/* Video */
+.video-container { position: relative; width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 16px; overflow: hidden; }
+.remote-video { width: 100%; height: 100%; object-fit: cover; }
+.local-video { position: absolute; bottom: 12px; right: 12px; width: 120px; height: 90px; border-radius: 10px; object-fit: cover; border: 2px solid #fff; z-index: 2; }
+
+/* Audio */
+.audio-container { padding: 40px 20px; }
+.audio-avatar { width: 120px; height: 120px; border-radius: 50%; background: #7c3aed; color: #fff; font-size: 3rem; font-weight: 700; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; animation: audioPulse 2s ease-in-out infinite; }
+@keyframes audioPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.4); } 50% { box-shadow: 0 0 0 20px rgba(124,58,237,0); } }
+.audio-container h3 { font-size: 1.4rem; margin-bottom: 4px; }
+
+/* Info Bar */
+.call-info-bar { display: flex; justify-content: center; gap: 24px; margin: 20px 0; }
+.call-timer { font-size: 1.5rem; font-weight: 700; color: #fff; font-family: monospace; }
+.call-balance { font-size: 0.95rem; color: #a78bfa; font-weight: 600; align-self: center; }
+
+/* End Call */
+.end-call-btn { background: #ef4444; color: #fff; border: none; padding: 16px 48px; border-radius: 50px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: background 0.3s; }
+.end-call-btn:hover { background: #dc2626; }
+
+/* Back Button */
+.back-btn { background: #7c3aed; color: #fff; border: none; padding: 12px 32px; border-radius: 10px; font-weight: 600; cursor: pointer; margin-top: 20px; }
+
+/* Rating */
+.rating-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.rating-modal { background: #fff; border-radius: 16px; padding: 32px; max-width: 400px; width: 90%; text-align: center; }
+.rating-modal h3 { color: #1a0533; margin-bottom: 4px; }
+.rating-modal p { color: #6b7280; margin-bottom: 16px; }
+.rating-stars { margin-bottom: 16px; }
+.rate-star { font-size: 2rem; color: #d1d5db; cursor: pointer; transition: color 0.2s; }
+.rate-star.active { color: #f59e0b; }
+.rating-modal textarea { width: 100%; padding: 10px; border: 2px solid #e0d4f5; border-radius: 8px; font-size: 0.9rem; resize: none; outline: none; margin-bottom: 16px; }
+.rating-modal textarea:focus { border-color: #7c3aed; }
+.rating-actions { display: flex; gap: 12px; justify-content: center; }
+.rating-skip { padding: 10px 24px; background: #f3f4f6; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+.rating-submit { padding: 10px 24px; background: #7c3aed; color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+.rating-submit:disabled { opacity: 0.5; }
+
+/* Mobile */
+@media (max-width: 600px) {
+  .local-video { width: 80px; height: 60px; }
+  .call-timer { font-size: 1.2rem; }
+}

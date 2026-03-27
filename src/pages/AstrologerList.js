@@ -58,14 +58,16 @@ const AstrologerList = () => {
       if (isChat) {
         res = await chatApi.addRequest({ astrologerId: astro.id, chatRate: astro.charge });
       } else {
-        res = await callApi.addRequest({ astrologerId: astro.id, callRate: astro.charge });
+        res = await callApi.addRequest({ astrologerId: astro.id, callRate: astro.charge, call_type: 10 });
       }
       const d = res.data;
       if (d?.status === 200) {
         toast.success(d.message || `${isChat ? 'Chat' : 'Call'} request sent! Waiting for astrologer to accept.`);
-        // Navigate to chat room after sending request
+        // Navigate to chat/call room after sending request
         if (isChat && d?.recordList?.id) {
           navigate(`/chat-room/${d.recordList.id}`);
+        } else if (!isChat && (d?.recordList?.id || d?.callId)) {
+          navigate(`/call-room/${d.recordList?.id || d.callId}`);
         }
       } else {
         toast.error(d?.message || `Failed to send ${isChat ? 'chat' : 'call'} request`);

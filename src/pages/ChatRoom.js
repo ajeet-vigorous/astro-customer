@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { chatApi } from '../api/services';
+import { chatApi, astrologerApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
@@ -20,6 +20,10 @@ const ChatRoom = () => {
   const [timeLeft, setTimeLeft] = useState(0);
   const [typing, setTyping] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [showRating, setShowRating] = useState(false);
+  const [ratingValue, setRatingValue] = useState(5);
+  const [reviewText, setReviewText] = useState('');
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const messagesEndRef = useRef(null);
   const socketRef = useRef(null);
   const timerRef = useRef(null);
@@ -143,6 +147,7 @@ const ChatRoom = () => {
       if (timerRef.current) clearInterval(timerRef.current);
       toast.info(data.message || 'Chat session ended');
       setChatRequest(prev => ({ ...prev, chatStatus: 'Completed' }));
+      setShowRating(true);
     });
 
     // Balance update (per-minute deduction)
@@ -227,6 +232,23 @@ const ChatRoom = () => {
       socketRef.current.emit('end-chat', { chatRequestId: chatId });
     }
     if (timerRef.current) clearInterval(timerRef.current);
+    setChatRequest(prev => ({ ...prev, chatStatus: 'Completed' }));
+    setShowRating(true);
+  };
+
+  const handleSubmitRating = async () => {
+    setRatingSubmitting(true);
+    try {
+      await astrologerApi.addReview({ astrologerId: chatRequest?.astrologerId, rating: ratingValue, review: reviewText });
+      toast.success('Thank you for your review!');
+    } catch (err) { /* ignore */ }
+    setRatingSubmitting(false);
+    setShowRating(false);
+    navigate('/chat-history');
+  };
+
+  const skipRating = () => {
+    setShowRating(false);
     navigate('/chat-history');
   };
 
@@ -327,6 +349,34 @@ const ChatRoom = () => {
           {sending ? '...' : 'Send'}
         </button>
       </form>
+
+      {/* Rating Popup */}
+      {showRating && (
+        <div className="rating-overlay">
+          <div className="rating-modal">
+            <h3>Rate Your Experience</h3>
+            <p className="rating-subtitle">How was your chat with {chatRequest?.astrologerName || 'Astrologer'}?</p>
+            <div className="rating-stars">
+              {[1,2,3,4,5].map(n => (
+                <span key={n} className={`rating-star ${n <= ratingValue ? 'active' : ''}`} onClick={() => setRatingValue(n)}>&#9733;</span>
+              ))}
+            </div>
+            <textarea
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              placeholder="Write your review (optional)..."
+              rows={3}
+              className="rating-textarea"
+            />
+            <div className="rating-actions">
+              <button className="rating-submit" onClick={handleSubmitRating} disabled={ratingSubmitting}>
+                {ratingSubmitting ? 'Submitting...' : 'Submit Review'}
+              </button>
+              <button className="rating-skip" onClick={skipRating}>Skip</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

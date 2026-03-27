@@ -9,9 +9,10 @@ const ChatHistory = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    if (!user?.id) return;
+    const fetchData = async () => {
       try {
-        const res = await accountApi.getChatHistory({ userId: user?.id, startIndex: 0, fetchRecord: 50 });
+        const res = await accountApi.getChatHistory({ userId: user.id, startIndex: 0, fetchRecord: 50 });
         const d = res.data?.data || res.data;
         setChats(Array.isArray(d) ? d : d?.recordList || []);
       } catch (err) {
@@ -19,8 +20,8 @@ const ChatHistory = () => {
       }
       setLoading(false);
     };
-    fetch();
-  }, []);
+    fetchData();
+  }, [user]);
 
   if (loading) return <div className="home-loading"><div className="spinner"></div><p>Loading...</p></div>;
 

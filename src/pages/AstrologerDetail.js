@@ -23,6 +23,8 @@ const AstrologerDetail = () => {
   const [reviewText, setReviewText] = useState('');
   const [rating, setRating] = useState(5);
   const [callLoading, setCallLoading] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -53,9 +55,10 @@ const AstrologerDetail = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [astroRes, revRes] = await Promise.allSettled([
+      const [astroRes, revRes, followRes] = await Promise.allSettled([
         astrologerApi.getById({ astrologerId: id }),
         astrologerApi.getReviews({ astrologerId: id }),
+        user ? astrologerApi.getFollowing({ userId: user.id }) : Promise.resolve(null),
       ]);
       if (astroRes.status === 'fulfilled') {
         const d = astroRes.value.data?.data || astroRes.value.data;
@@ -66,10 +69,28 @@ const AstrologerDetail = () => {
         const d = revRes.value.data?.data || revRes.value.data;
         setReviews(Array.isArray(d) ? d : d?.recordList || []);
       }
+      if (followRes.status === 'fulfilled' && followRes.value) {
+        const d = followRes.value.data?.data || followRes.value.data;
+        const list = Array.isArray(d) ? d : d?.recordList || [];
+        setIsFollowing(list.some(f => String(f.astrologerId || f.id) === String(id)));
+      }
     } catch (err) {
       console.error(err);
     }
     setLoading(false);
+  };
+
+  const handleFollow = async () => {
+    if (!user) { toast.error('Please login first'); navigate('/login'); return; }
+    setFollowLoading(true);
+    try {
+      await astrologerApi.follow({ astrologerId: id });
+      setIsFollowing(!isFollowing);
+      toast.success(isFollowing ? 'Unfollowed' : 'Following!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed');
+    }
+    setFollowLoading(false);
   };
 
   const openIntakeModal = (type) => {
@@ -128,6 +149,7 @@ const AstrologerDetail = () => {
           astrologerId: id,
           callRate: charge,
           call_duration: selectedDuration * 60,
+          call_type: 10,
         });
       }
 
@@ -135,9 +157,11 @@ const AstrologerDetail = () => {
       if (d?.status === 200) {
         toast.success(d.message || `${intakeType === 'chat' ? 'Chat' : 'Call'} request sent! Waiting for astrologer to accept.`);
         setShowIntake(false);
-        // Navigate to chat room if chat request
+        // Navigate to chat/call room
         if (intakeType === 'chat' && d?.recordList?.id) {
           navigate(`/chat-room/${d.recordList.id}`);
+        } else if (intakeType === 'call' && d?.recordList?.id) {
+          navigate(`/call-room/${d.recordList.id}`);
         }
       } else {
         toast.error(d?.message || 'Request failed');
@@ -189,8 +213,8 @@ const AstrologerDetail = () => {
             </div>
             <div className="astro-detail-info">
               <h2>{astro.name}</h2>
-              <p className="detail-skill">{astro.primarySkill || astro.skill || '-'}</p>
-              <p className="detail-lang">{astro.languageKnown || astro.language || ''}</p>
+              <p className="detail-skill">{Array.isArray(astro.primarySkill) ? astro.primarySkill.map(s => s.name).join(', ') : (astro.primarySkill || astro.skill || '-')}</p>
+              <p className="detail-lang">{Array.isArray(astro.languageKnown) ? astro.languageKnown.map(l => l.languageName || l.name).join(', ') : (astro.languageKnown || astro.language || '')}</p>
               <p className="detail-exp">{astro.experience ? `${astro.experience} years experience` : ''}</p>
               <div className="detail-rating">
                 <span className="star">&#9733;</span>
@@ -204,6 +228,9 @@ const AstrologerDetail = () => {
                 </button>
                 <button className="detail-chat-btn" onClick={handleChat} disabled={astro.chatStatus === 'Offline'}>
                   &#128172; Chat Now
+                </button>
+                <button className={`detail-follow-btn ${isFollowing ? 'following' : ''}`} onClick={handleFollow} disabled={followLoading}>
+                  {followLoading ? '...' : isFollowing ? '&#10003; Following' : '+ Follow'}
                 </button>
               </div>
             </div>
@@ -223,9 +250,13 @@ const AstrologerDetail = () => {
           <section className="detail-section">
             <h3>Expertise</h3>
             <div className="expertise-tags">
-              {(astro.allSkill || astro.primarySkill || astro.skill || '').split(',').map((s, i) => (
-                <span key={i} className="expertise-tag">{s.trim()}</span>
-              ))}
+              {(() => {
+                const skills = astro.allSkill || astro.primarySkill || astro.skill || '';
+                const arr = Array.isArray(skills) ? skills : String(skills).split(',');
+                return arr.map((s, i) => (
+                  <span key={i} className="expertise-tag">{typeof s === 'object' ? s.name : String(s).trim()}</span>
+                ));
+              })()}
             </div>
           </section>
         )}

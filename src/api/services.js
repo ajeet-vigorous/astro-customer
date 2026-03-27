@@ -50,6 +50,11 @@ export const chatApi = {
 export const callApi = {
   addRequest: (data) => API.post('/customer/callRequest/add', data),
   checkSession: (data) => API.post('/customer/checkCallSessionAvailable', data),
+  getZegoToken: (data) => API.post('/customer/zegocloud/token', data),
+  endCall: (data) => API.post('/customer/callRequest/end', data),
+  cancelCall: (data) => API.post('/customer/callRequest/cancel', data),
+  getCallById: (data) => API.post('/customer/getCallById', data),
+  getCallHistory: (data) => API.post('/customer/getCallHistory', data),
 };
 
 // Wallet & Payment
@@ -71,6 +76,7 @@ export const horoscopeApi = {
   getSigns: () => API.post('/customer/getHororscopeSign'),
   getDaily: (params) => API.post('/customer/getDailyHoroscope', params),
   getHoroscope: (params) => API.post('/customer/getHoroscope', params),
+  getEnabledLanguages: () => API.post('/customer/getEnabledLanguages'),
 };
 
 // Kundali
@@ -115,6 +121,12 @@ export const pujaApi = {
   getDetails: (params) => API.post('/customer/getPujaDetails', params),
   getFaq: (params) => API.post('/customer/getPujafaq', params),
   placeOrder: (data) => API.post('/customer/placedPujaOrder', data),
+};
+
+// Coupon
+export const couponApi = {
+  getAll: (params) => API.post('/customer/getCouponcode', params),
+  apply: (data) => API.post('/customer/applyCoupon', data),
 };
 
 // User Account
