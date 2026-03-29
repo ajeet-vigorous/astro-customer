@@ -27,6 +27,7 @@ const PujaList = () => {
     if (selectedCat) {
       fetchPujas();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCat]);
 
   const fetchPujas = async () => {

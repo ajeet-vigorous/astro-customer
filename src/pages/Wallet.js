@@ -26,6 +26,7 @@ const Wallet = () => {
       verifyStripeReturn(sessionId, paymentId);
       window.history.replaceState({}, '', '/wallet');
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchWalletData = async () => {
@@ -266,8 +267,8 @@ const Wallet = () => {
               {transactions.map((txn, i) => (
                 <div key={txn.id || i} className="transaction-item">
                   <div className="txn-left">
-                    <span className={`txn-type ${txn.isCredit == 1 ? 'credit' : 'debit'}`}>
-                      {txn.isCredit == 1 ? '+' : '-'}&#8377;{parseFloat(txn.amount).toFixed(2)}
+                    <span className={`txn-type ${String(txn.isCredit) === '1' ? 'credit' : 'debit'}`}>
+                      {String(txn.isCredit) === '1' ? '+' : '-'}&#8377;{parseFloat(txn.amount).toFixed(2)}
                     </span>
                     <span className="txn-remark">{txn.remark || txn.transactionType || '-'}</span>
                   </div>

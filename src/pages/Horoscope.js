@@ -20,7 +20,7 @@ const Horoscope = () => {
         const res = await horoscopeApi.getSigns();
         const d = res.data?.data || res.data;
         const list = Array.isArray(d) ? d : d?.recordList || [];
-        setSigns(list.filter(s => s.isActive == 1 || s.isActive === undefined));
+        setSigns(list.filter(s => String(s.isActive) === '1' || s.isActive === undefined));
       } catch (err) {
         console.error(err);
       }
