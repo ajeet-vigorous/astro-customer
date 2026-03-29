@@ -61,7 +61,7 @@ const ProductList = () => {
           <div className="prod-list-grid">
             {filteredProducts.map((prod) => (
               <Link key={prod.id} to={`/product/${prod.id}`} className="prod-list-card">
-                {prod.image && <img src={prod.image.startsWith('http') ? prod.image : `http://localhost:5000${prod.image}`} alt={prod.name} />}
+                {prod.image && <img src={prod.image.startsWith('http') ? prod.image : `https://astrology-i7c9.onrender.com${prod.image}`} alt={prod.name} />}
                 <div className="prod-list-info">
                   <h4>{prod.name}</h4>
                   <p className="prod-desc">{(prod.description || '').replace(/<[^>]+>/g, '').slice(0, 80)}</p>

@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 import './ChatRoom.css';
 
-const SOCKET_URL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const SOCKET_URL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'https://astrology-i7c9.onrender.com';
 
 const ChatRoom = () => {
   const { chatId } = useParams();
@@ -143,11 +143,17 @@ const ChatRoom = () => {
     });
 
     // Chat ended
-    socket.on('chat-ended', (data) => {
+    socket.on('chat-ended', async (data) => {
       if (timerRef.current) clearInterval(timerRef.current);
       toast.info(data.message || 'Chat session ended');
       setChatRequest(prev => ({ ...prev, chatStatus: 'Completed' }));
-      setShowRating(true);
+      // Check if already reviewed this astrologer
+      try {
+        const revRes = await astrologerApi.getReviews({ astrologerId: data.astrologerId || chatRequest?.astrologerId });
+        const reviews = revRes.data?.recordList || revRes.data?.data || [];
+        const alreadyReviewed = Array.isArray(reviews) && reviews.some(r => r.userId == user?.id);
+        if (!alreadyReviewed) setShowRating(true);
+      } catch(e) { setShowRating(true); }
     });
 
     // Balance update (per-minute deduction)
@@ -227,13 +233,19 @@ const ChatRoom = () => {
     }
   };
 
-  const handleEndChat = () => {
+  const handleEndChat = async () => {
     if (socketRef.current?.connected) {
       socketRef.current.emit('end-chat', { chatRequestId: chatId });
     }
     if (timerRef.current) clearInterval(timerRef.current);
     setChatRequest(prev => ({ ...prev, chatStatus: 'Completed' }));
-    setShowRating(true);
+    // Check if already reviewed
+    try {
+      const revRes = await astrologerApi.getReviews({ astrologerId: chatRequest?.astrologerId });
+      const reviews = revRes.data?.recordList || revRes.data?.data || [];
+      const alreadyReviewed = Array.isArray(reviews) && reviews.some(r => r.userId == user?.id);
+      if (!alreadyReviewed) setShowRating(true);
+    } catch(e) { setShowRating(true); }
   };
 
   const handleSubmitRating = async () => {
@@ -273,7 +285,7 @@ const ChatRoom = () => {
       <div className="chatroom-header">
         <div className="chatroom-astro-info">
           <img
-            src={chatRequest?.profileImage ? (chatRequest.profileImage.startsWith('http') ? chatRequest.profileImage : `http://localhost:5000${chatRequest.profileImage}`) : '/default-avatar.png'}
+            src={chatRequest?.profileImage ? (chatRequest.profileImage.startsWith('http') ? chatRequest.profileImage : `https://astrology-i7c9.onrender.com${chatRequest.profileImage}`) : '/default-avatar.png'}
             alt={chatRequest?.astrologerName || 'Astrologer'}
           />
           <div>

@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import io from 'socket.io-client';
 import './CallRoom.css';
 
-const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api').replace('/api', '');
+const API_URL = (process.env.REACT_APP_API_URL || 'https://astrology-i7c9.onrender.com/api').replace('/api', '');
 
 const CallRoom = () => {
   const { callId } = useParams();
@@ -64,11 +64,18 @@ const CallRoom = () => {
       toast.error('Call rejected by astrologer');
     });
 
-    socket.on('call-ended', (data) => {
+    socket.on('call-ended', async (data) => {
       setStatus('Completed');
       stopZegoCall();
       if (timerRef.current) clearInterval(timerRef.current);
-      setShowRating(true);
+      // Check if already reviewed this astrologer
+      try {
+        const { astrologerApi } = await import('../api/services');
+        const revRes = await astrologerApi.getReviews({ astrologerId: callData?.astrologerId || data?.astrologerId });
+        const reviews = revRes.data?.recordList || revRes.data?.data || [];
+        const alreadyReviewed = Array.isArray(reviews) && reviews.some(r => r.userId == user?.id);
+        if (!alreadyReviewed) setShowRating(true);
+      } catch(e) { setShowRating(true); }
     });
 
     socket.on('call-balance-update', (data) => {

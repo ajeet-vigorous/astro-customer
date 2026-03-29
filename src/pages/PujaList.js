@@ -52,7 +52,7 @@ const PujaList = () => {
         <div className="puja-cat-grid">
           {categories.map(cat => (
             <div key={cat.id} className={`puja-cat-card ${String(selectedCat) === String(cat.id) ? 'active' : ''}`} onClick={() => setSelectedCat(cat.id)}>
-              {cat.image && <img src={cat.image.startsWith('http') ? cat.image : `http://localhost:5000${cat.image}`} alt={cat.title || cat.name} />}
+              {cat.image && <img src={cat.image.startsWith('http') ? cat.image : `https://astrology-i7c9.onrender.com${cat.image}`} alt={cat.title || cat.name} />}
               <h5>{cat.title || cat.name}</h5>
             </div>
           ))}
@@ -67,7 +67,7 @@ const PujaList = () => {
               <div className="puja-items-grid">
                 {pujas.map(puja => (
                   <Link key={puja.id} to={`/puja/${puja.id}`} className="puja-item-card">
-                    {puja.image && <img src={puja.image.startsWith('http') ? puja.image : `http://localhost:5000${puja.image}`} alt={puja.title || puja.name} />}
+                    {puja.image && <img src={puja.image.startsWith('http') ? puja.image : `https://astrology-i7c9.onrender.com${puja.image}`} alt={puja.title || puja.name} />}
                     <div className="puja-item-info">
                       <h4>{puja.title || puja.name}</h4>
                       <p>{(puja.description || '').replace(/<[^>]+>/g, '').slice(0, 100)}</p>

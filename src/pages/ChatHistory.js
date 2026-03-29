@@ -36,7 +36,7 @@ const ChatHistory = () => {
             {chats.map((chat) => (
               <div key={chat.id} className="history-card">
                 <div className="history-avatar">
-                  <img src={chat.profileImage ? (chat.profileImage.startsWith('http') ? chat.profileImage : `http://localhost:5000${chat.profileImage}`) : '/default-avatar.png'} alt={chat.astrologerName || 'Astrologer'} />
+                  <img src={chat.profileImage ? (chat.profileImage.startsWith('http') ? chat.profileImage : `https://astrology-i7c9.onrender.com${chat.profileImage}`) : '/default-avatar.png'} alt={chat.astrologerName || 'Astrologer'} />
                 </div>
                 <div className="history-info">
                   <h4>{chat.astrologerName || chat.name || 'Astrologer'}</h4>

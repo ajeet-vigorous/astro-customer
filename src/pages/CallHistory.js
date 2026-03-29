@@ -35,7 +35,7 @@ const CallHistory = () => {
             {calls.map((call) => (
               <div key={call.id} className="history-card">
                 <div className="history-avatar">
-                  <img src={call.profileImage ? (call.profileImage.startsWith('http') ? call.profileImage : `http://localhost:5000${call.profileImage}`) : '/default-avatar.png'} alt={call.astrologerName || 'Astrologer'} />
+                  <img src={call.profileImage ? (call.profileImage.startsWith('http') ? call.profileImage : `https://astrology-i7c9.onrender.com${call.profileImage}`) : '/default-avatar.png'} alt={call.astrologerName || 'Astrologer'} />
                 </div>
                 <div className="history-info">
                   <h4>{call.astrologerName || call.name || 'Astrologer'}</h4>
