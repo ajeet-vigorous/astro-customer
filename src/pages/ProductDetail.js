@@ -34,7 +34,7 @@ const ProductDetail = () => {
         </div>
         <div className="prod-detail-layout">
           <div className="prod-detail-img">
-            {product.image && <img src={product.image.startsWith('http') ? product.image : `https://astrology-i7c9.onrender.com${product.image}`} alt={product.name} />}
+            {product.image && <img src={product.image.startsWith('http') ? product.image : `http://localhost:5000${product.image}`} alt={product.name} />}
           </div>
           <div className="prod-detail-info">
             <h1>{product.name}</h1>

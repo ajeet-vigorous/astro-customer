@@ -285,7 +285,7 @@ const ChatRoom = () => {
       <div className="chatroom-header">
         <div className="chatroom-astro-info">
           <img
-            src={chatRequest?.profileImage ? (chatRequest.profileImage.startsWith('http') ? chatRequest.profileImage : `https://astrology-i7c9.onrender.com${chatRequest.profileImage}`) : '/default-avatar.png'}
+            src={chatRequest?.profileImage ? (chatRequest.profileImage.startsWith('http') ? chatRequest.profileImage : `http://localhost:5000${chatRequest.profileImage}`) : '/default-avatar.png'}
             alt={chatRequest?.astrologerName || 'Astrologer'}
           />
           <div>

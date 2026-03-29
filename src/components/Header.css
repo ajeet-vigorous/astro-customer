@@ -1,3 +1,9 @@
+.active-session-banner { background: #10b981; color: #fff; text-align: center; padding: 10px 16px; font-size: 0.9rem; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 12px; animation: bannerPulse 2s infinite; }
+.active-session-banner:hover { background: #059669; }
+.active-session-banner strong { font-weight: 700; }
+.resume-btn { background: rgba(255,255,255,0.25); padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; }
+@keyframes bannerPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.85; } }
+
 .cust-header {
   background: linear-gradient(135deg, #1a0533 0%, #2d1b69 50%, #1a0533 100%);
   color: #fff;

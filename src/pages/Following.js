@@ -33,7 +33,7 @@ const Following = () => {
           <div className="following-grid">
             {following.map((astro) => (
               <Link key={astro.id} to={`/astrologer/${astro.astrologerId || astro.id}`} className="following-card">
-                <img src={astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `https://astrology-i7c9.onrender.com${astro.profileImage}`) : '/default-avatar.png'} alt={astro.name} />
+                <img src={astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `http://localhost:5000${astro.profileImage}`) : '/default-avatar.png'} alt={astro.name} />
                 <div className="following-info">
                   <h4>{astro.name || astro.astrologerName}</h4>
                   <p>{astro.primarySkill || astro.skill || ''}</p>

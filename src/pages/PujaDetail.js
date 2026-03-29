@@ -49,7 +49,7 @@ const PujaDetail = () => {
         </div>
         <div className="puja-detail-layout">
           <div className="puja-detail-left">
-            {puja.image && <img src={puja.image.startsWith('http') ? puja.image : `https://astrology-i7c9.onrender.com${puja.image}`} alt={puja.title || puja.name} className="puja-detail-img" />}
+            {puja.image && <img src={puja.image.startsWith('http') ? puja.image : `http://localhost:5000${puja.image}`} alt={puja.title || puja.name} className="puja-detail-img" />}
           </div>
           <div className="puja-detail-right">
             <h1>{puja.title || puja.name}</h1>

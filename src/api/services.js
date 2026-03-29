@@ -44,6 +44,7 @@ export const chatApi = {
   getMessages: (data) => API.post('/customer/chatRequest/getMessages', data),
   getChatDetail: (data) => API.post('/customer/chatRequest/getChatDetail', data),
   endChat: (data) => API.post('/customer/chatRequest/endChat', data),
+  getActiveSession: () => API.post('/customer/getActiveSession'),
 };
 
 // Call

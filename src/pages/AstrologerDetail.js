@@ -197,7 +197,7 @@ const AstrologerDetail = () => {
   if (loading) return <div className="home-loading"><div className="spinner"></div><p>Loading...</p></div>;
   if (!astro) return <div className="no-data">Astrologer not found</div>;
 
-  const imgSrc = astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `https://astrology-i7c9.onrender.com${astro.profileImage}`) : '/default-avatar.png';
+  const imgSrc = astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `http://localhost:5000${astro.profileImage}`) : '/default-avatar.png';
   const charge = parseFloat(astro.charge || 0);
 
   return (

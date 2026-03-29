@@ -101,7 +101,7 @@ const AstrologerList = () => {
               {astrologers.map((astro) => (
                 <Link key={astro.id} to={`/astrologer/${astro.id}`} className="astro-list-card">
                   <div className="astro-list-img">
-                    <img src={astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `https://astrology-i7c9.onrender.com${astro.profileImage}`) : '/default-avatar.png'} alt={astro.name} />
+                    <img src={astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `http://localhost:5000${astro.profileImage}`) : '/default-avatar.png'} alt={astro.name} />
                     <span className={`status-badge ${astro.chatStatus === 'Online' || astro.callStatus === 'Online' ? 'online' : astro.chatStatus === 'Busy' || astro.callStatus === 'Busy' ? 'busy' : 'offline'}`}>
                       {astro.chatStatus === 'Online' || astro.callStatus === 'Online' ? 'Online' : astro.chatStatus === 'Busy' || astro.callStatus === 'Busy' ? 'Busy' : 'Offline'}
                     </span>

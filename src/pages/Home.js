@@ -117,7 +117,7 @@ const Home = () => {
             <div className="horoscope-grid">
               {horoscopeSigns.map((sign) => (
                 <Link key={sign.id} to={`/daily-horoscope/${sign.name?.toLowerCase()}`} className="horoscope-card">
-                  {sign.image && <img src={sign.image.startsWith('http') ? sign.image : `https://astrology-i7c9.onrender.com${sign.image}`} alt={sign.name} />}
+                  {sign.image && <img src={sign.image.startsWith('http') ? sign.image : `http://localhost:5000${sign.image}`} alt={sign.name} />}
                   <span>{sign.name}</span>
                 </Link>
               ))}
@@ -138,7 +138,7 @@ const Home = () => {
               {astrologers.map((astro) => (
                 <Link key={astro.id} to={`/astrologer/${astro.id}`} className="astro-card">
                   <div className="astro-img-wrap">
-                    <img src={astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `https://astrology-i7c9.onrender.com${astro.profileImage}`) : '/default-avatar.png'} alt={astro.name} />
+                    <img src={astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `http://localhost:5000${astro.profileImage}`) : '/default-avatar.png'} alt={astro.name} />
                     <span className={`status-dot ${astro.chatStatus === 'Online' || astro.callStatus === 'Online' ? 'online' : 'offline'}`}></span>
                   </div>
                   <h5>{astro.name}</h5>
@@ -167,7 +167,7 @@ const Home = () => {
             <div className="puja-grid">
               {pujaCategories.slice(0, 6).map((cat) => (
                 <Link key={cat.id} to={`/puja/${cat.id}`} className="puja-card">
-                  {cat.image && <img src={cat.image.startsWith('http') ? cat.image : `https://astrology-i7c9.onrender.com${cat.image}`} alt={cat.title || cat.name} />}
+                  {cat.image && <img src={cat.image.startsWith('http') ? cat.image : `http://localhost:5000${cat.image}`} alt={cat.title || cat.name} />}
                   <h5>{cat.title || cat.name}</h5>
                 </Link>
               ))}
@@ -187,7 +187,7 @@ const Home = () => {
             <div className="product-grid">
               {products.slice(0, 4).map((prod) => (
                 <Link key={prod.id} to={`/product/${prod.id}`} className="product-card">
-                  {prod.image && <img src={prod.image.startsWith('http') ? prod.image : `https://astrology-i7c9.onrender.com${prod.image}`} alt={prod.name} />}
+                  {prod.image && <img src={prod.image.startsWith('http') ? prod.image : `http://localhost:5000${prod.image}`} alt={prod.name} />}
                   <h5>{prod.name}</h5>
                   <p className="product-price">&#8377;{prod.price || prod.amount || 0}</p>
                   <button className="buy-btn">Buy Now</button>
@@ -209,7 +209,7 @@ const Home = () => {
             <div className="blog-grid">
               {blogs.slice(0, 3).map((blog) => (
                 <Link key={blog.id} to={`/blog/${blog.id}`} className="blog-card">
-                  {blog.image && <img src={blog.image.startsWith('http') ? blog.image : `https://astrology-i7c9.onrender.com${blog.image}`} alt={blog.title} />}
+                  {blog.image && <img src={blog.image.startsWith('http') ? blog.image : `http://localhost:5000${blog.image}`} alt={blog.title} />}
                   <div className="blog-info">
                     <h5>{blog.title}</h5>
                     <p>{(blog.description || '').replace(/<[^>]+>/g, '').slice(0, 100)}...</p>

@@ -36,7 +36,7 @@ const BlogList = () => {
           <div className="blog-list-grid">
             {blogs.map((blog) => (
               <Link key={blog.id} to={`/blog/${blog.id}`} className="blog-list-card">
-                {blog.image && <img src={blog.image.startsWith('http') ? blog.image : `https://astrology-i7c9.onrender.com${blog.image}`} alt={blog.title} />}
+                {blog.image && <img src={blog.image.startsWith('http') ? blog.image : `http://localhost:5000${blog.image}`} alt={blog.title} />}
                 <div className="blog-list-info">
                   <h4>{blog.title}</h4>
                   <p>{(blog.description || '').replace(/<[^>]+>/g, '').slice(0, 150)}...</p>

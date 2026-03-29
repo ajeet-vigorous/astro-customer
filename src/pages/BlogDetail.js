@@ -31,7 +31,7 @@ const BlogDetail = () => {
         <div className="blog-detail-nav">
           <Link to="/blog">&larr; Back to Blogs</Link>
         </div>
-        {blog.image && <img src={blog.image.startsWith('http') ? blog.image : `https://astrology-i7c9.onrender.com${blog.image}`} alt={blog.title} className="blog-detail-img" />}
+        {blog.image && <img src={blog.image.startsWith('http') ? blog.image : `http://localhost:5000${blog.image}`} alt={blog.title} className="blog-detail-img" />}
         <h1 className="blog-detail-title">{blog.title}</h1>
         {blog.createdAt && <p className="blog-detail-date">{new Date(blog.createdAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}</p>}
         <div className="blog-detail-content" dangerouslySetInnerHTML={{ __html: blog.description || blog.content || '' }} />

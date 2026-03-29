@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import io from 'socket.io-client';
 import './CallRoom.css';
 
-const API_URL = (process.env.REACT_APP_API_URL || 'https://astrology-i7c9.onrender.com/api').replace('/api', '');
+const API_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api').replace('/api', '');
 
 const CallRoom = () => {
   const { callId } = useParams();

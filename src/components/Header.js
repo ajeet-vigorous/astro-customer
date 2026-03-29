@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { chatApi } from '../api/services';
 import './Header.css';
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSession, setActiveSession] = useState(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -13,8 +15,30 @@ const Header = () => {
     navigate('/');
   };
 
+  useEffect(() => {
+    if (!user) { setActiveSession(null); return; }
+    const checkActive = async () => {
+      try {
+        const res = await chatApi.getActiveSession();
+        const d = res.data;
+        if (d?.activeChat) setActiveSession({ type: 'chat', id: d.activeChat.id, name: d.activeChat.astrologerName, status: d.activeChat.chatStatus });
+        else if (d?.activeCall) setActiveSession({ type: 'call', id: d.activeCall.id, name: d.activeCall.astrologerName, status: d.activeCall.callStatus });
+        else setActiveSession(null);
+      } catch(e) { setActiveSession(null); }
+    };
+    checkActive();
+    const interval = setInterval(checkActive, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   return (
     <header className="cust-header">
+      {activeSession && (
+        <div className="active-session-banner" onClick={() => navigate(activeSession.type === 'chat' ? `/chat-room/${activeSession.id}` : `/call-room/${activeSession.id}`)}>
+          <span>&#128172; Active {activeSession.type === 'chat' ? 'Chat' : 'Call'} with <strong>{activeSession.name}</strong> ({activeSession.status})</span>
+          <span className="resume-btn">Resume &rarr;</span>
+        </div>
+      )}
       <div className="header-container">
         <Link to="/" className="header-logo">
           <span className="logo-icon">&#9733;</span>
