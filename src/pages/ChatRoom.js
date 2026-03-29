@@ -15,6 +15,7 @@ const ChatRoom = () => {
   const [chatRequest, setChatRequest] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const pollRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
@@ -41,6 +42,9 @@ const ChatRoom = () => {
       }
       if (timerRef.current) {
         clearInterval(timerRef.current);
+      }
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
       }
     };
   }, [chatId]);
@@ -102,45 +106,65 @@ const ChatRoom = () => {
 
     socket.on('connect', () => {
       console.log('Socket connected:', socket.id);
-      // Join the chat room
-      socket.emit('join-chat', { chatRequestId: chatId });
+      socket.emit('join-chat', { chatRequestId: parseInt(chatId) });
     });
 
     // New message received
     socket.on('new-message', (msg) => {
       setMessages(prev => {
-        // Avoid duplicates
         if (prev.find(m => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
     });
 
-    // Chat accepted by astrologer
-    socket.on('chat-accepted', (data) => {
-      setChatRequest(prev => ({ ...prev, chatStatus: 'Accepted' }));
+    // Chat accepted handler
+    const onChatAccepted = (data) => {
+      if (data.chatRequestId && String(data.chatRequestId) !== String(chatId)) return;
+      setChatRequest(prev => {
+        if (prev?.chatStatus === 'Accepted') return prev;
+        return { ...prev, chatStatus: 'Accepted' };
+      });
       setWalletBalance(data.walletBalance || 0);
       toast.success(`${data.astrologerName || 'Astrologer'} ne chat accept kar li!`);
-
-      // Start countdown timer
       const maxDuration = data.maxDuration || 3600;
       setTimeLeft(maxDuration);
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timerRef.current);
-            return 0;
-          }
+          if (prev <= 1) { clearInterval(timerRef.current); return 0; }
           return prev - 1;
         });
       }, 1000);
-    });
+    };
+    socket.on('chat-accepted', onChatAccepted);
+    socket.on('chat-accepted-global', onChatAccepted);
 
-    // Chat rejected
-    socket.on('chat-rejected', () => {
+    // Chat rejected handler
+    const onChatRejected = (data) => {
+      if (data?.chatRequestId && String(data.chatRequestId) !== String(chatId)) return;
       setChatRequest(prev => ({ ...prev, chatStatus: 'Rejected' }));
       toast.error('Astrologer ne chat reject kar di');
-    });
+    };
+    socket.on('chat-rejected', onChatRejected);
+    socket.on('chat-rejected-global', onChatRejected);
+
+    // Fallback: Poll chat status every 3 seconds (in case socket event missed)
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await chatApi.getChatDetail({ chatRequestId: chatId });
+        const detail = res.data?.recordList || res.data;
+        if (detail?.chatStatus === 'Accepted') {
+          onChatAccepted({ chatRequestId: chatId, astrologerName: detail.astrologerName, maxDuration: 3600, walletBalance: 0 });
+          clearInterval(pollRef.current);
+        } else if (detail?.chatStatus === 'Rejected') {
+          onChatRejected({ chatRequestId: chatId });
+          clearInterval(pollRef.current);
+        } else if (detail?.chatStatus === 'Completed') {
+          clearInterval(pollRef.current);
+        }
+      } catch(e) {}
+    }, 3000);
 
     // Chat ended
     socket.on('chat-ended', async (data) => {
@@ -285,7 +309,7 @@ const ChatRoom = () => {
       <div className="chatroom-header">
         <div className="chatroom-astro-info">
           <img
-            src={chatRequest?.profileImage ? (chatRequest.profileImage.startsWith('http') ? chatRequest.profileImage : `https://astrology-i7c9.onrender.com${chatRequest.profileImage}`) : '/default-avatar.png'}
+            src={chatRequest?.profileImage ? (chatRequest.profileImage.startsWith('http') ? chatRequest.profileImage : `http://localhost:5000${chatRequest.profileImage}`) : '/default-avatar.png'}
             alt={chatRequest?.astrologerName || 'Astrologer'}
           />
           <div>
