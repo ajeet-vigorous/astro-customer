@@ -70,6 +70,7 @@ export const walletApi = {
   razorpayVerify: (data) => API.post('/customer/razorpay/verify', data),
   stripeCreateSession: (data) => API.post('/customer/stripe/createSession', data),
   stripeVerify: (data) => API.post('/customer/stripe/verify', data),
+  cancelPayment: (data) => API.post('/customer/cancelPayment', data),
 };
 
 // Horoscope

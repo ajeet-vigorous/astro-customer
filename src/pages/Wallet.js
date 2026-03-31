@@ -29,8 +29,8 @@ const Wallet = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchWalletData = async () => {
-    setLoading(true);
+  const fetchWalletData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [balanceRes, rechargeRes, txnRes, configRes] = await Promise.allSettled([
         walletApi.getBalance(),
@@ -150,7 +150,7 @@ const Wallet = () => {
             if (verifyRes.data?.status === 200) {
               toast.success(verifyRes.data.message || 'Wallet recharged!');
               if (verifyRes.data.walletBalance !== undefined) setBalance(parseFloat(verifyRes.data.walletBalance));
-              fetchWalletData();
+              fetchWalletData(true);
             } else {
               toast.error('Payment verification failed');
             }
@@ -158,7 +158,12 @@ const Wallet = () => {
           setRecharging(false);
         },
         theme: { color: '#7c3aed' },
-        modal: { ondismiss: () => setRecharging(false) }
+        modal: {
+          ondismiss: async () => {
+            try { await walletApi.cancelPayment({ paymentId }); } catch(e) {}
+            setRecharging(false);
+          }
+        }
       };
       new window.Razorpay(options).open();
     } catch (err) {
@@ -193,7 +198,7 @@ const Wallet = () => {
       const res = await walletApi.stripeVerify({ sessionId, paymentId });
       if (res.data?.status === 200) {
         toast.success(res.data.message || 'Wallet recharged!');
-        fetchWalletData();
+        fetchWalletData(true);
       } else {
         toast.error('Stripe payment verification failed');
       }

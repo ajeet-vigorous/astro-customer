@@ -6,7 +6,7 @@ import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
 import './ChatRoom.css';
 
-const SOCKET_URL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'https://astrology-i7c9.onrender.com';
+const SOCKET_URL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
 
 const ChatRoom = () => {
   const { chatId } = useParams();
