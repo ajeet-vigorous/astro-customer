@@ -93,86 +93,98 @@ const CallRoom = () => {
     };
   }, [callId, user]);
 
-  // Start Zegocloud call
+  // Start call — dynamic provider (Zegocloud / Agora / 100ms)
   const startZegoCall = async (data) => {
     try {
-      // Step 1: Get Zego token
-      console.log('Step 1: Getting Zego token...');
       const tokenRes = await callApi.getZegoToken({ callId: parseInt(callId), userId: user.id });
-      if (tokenRes.data?.status !== 200) {
-        toast.error('Failed to get call token');
-        return;
-      }
-      const { appID, roomID, userID, token } = tokenRes.data;
-      console.log('Step 2: Token received, appID:', appID, 'roomID:', roomID, 'userID:', userID);
+      if (tokenRes.data?.status !== 200) { toast.error('Failed to get call token'); return; }
 
-      // Step 2: Load Zegocloud SDK
-      console.log('Step 3: Loading Zegocloud SDK...');
-      const zegoModule = await import('zego-express-engine-webrtc');
-      const ZegoExpressEngine = zegoModule.ZegoExpressEngine || zegoModule.default;
-      console.log('Step 4: SDK loaded, type:', typeof ZegoExpressEngine);
-
-      if (!ZegoExpressEngine) {
-        toast.error('Zegocloud SDK not loaded properly');
-        return;
-      }
-
-      const zg = new ZegoExpressEngine(appID, 'wss://webliveroom2041676101-api.coolzcloud.com/ws');
-      zegoRef.current = zg;
-      console.log('Step 5: Engine created');
-
-      // Step 3: Login to room
-      console.log('Step 6: Logging into room...');
-      await zg.loginRoom(roomID, token, { userID: String(userID), userName: user.name || 'Customer' });
-      console.log('Step 7: Logged into room');
-
-      // Step 4: Create stream
+      const { appID, roomID, userID, token, provider, serverUrl } = tokenRes.data;
       const isVideo = data.call_type == 11 || data.call_type === 'Video';
-      console.log('Step 8: Creating stream, isVideo:', isVideo);
-      const localStream = await zg.createStream({
-        camera: { audio: true, video: isVideo }
-      });
-      console.log('Step 9: Stream created');
+      const userName = user.name || 'Customer';
 
-      const localEl = document.getElementById('local-stream');
-      if (localEl) localEl.srcObject = localStream;
+      console.log('Call provider:', provider, 'roomID:', roomID);
 
-      await zg.startPublishingStream(`stream_${userID}`, localStream);
-      console.log('Step 10: Publishing stream');
-
-      // Listen for remote stream
-      zg.on('roomStreamUpdate', async (rid, updateType, streamList) => {
-        console.log('Stream update:', updateType, streamList.map(s => s.streamID));
-        if (updateType === 'ADD') {
-          for (const stream of streamList) {
-            const remoteStream = await zg.startPlayingStream(stream.streamID);
-            const remoteEl = document.getElementById('remote-stream');
-            if (remoteEl) remoteEl.srcObject = remoteStream;
+      if (provider === 'zego') {
+        // === ZEGOCLOUD ===
+        const zegoModule = await import('zego-express-engine-webrtc');
+        const ZegoExpressEngine = zegoModule.ZegoExpressEngine || zegoModule.default;
+        if (!ZegoExpressEngine) { toast.error('Zegocloud SDK not loaded'); return; }
+        const zg = new ZegoExpressEngine(appID, serverUrl || 'wss://webliveroom-api.zegocloud.com/ws');
+        zegoRef.current = zg;
+        await zg.loginRoom(roomID, token, { userID: String(userID), userName });
+        const localStream = await zg.createStream({ camera: { audio: true, video: isVideo } });
+        const localEl = document.getElementById('local-stream');
+        if (localEl) localEl.srcObject = localStream;
+        await zg.startPublishingStream(`stream_${userID}`, localStream);
+        zg.on('roomStreamUpdate', async (rid, updateType, streamList) => {
+          if (updateType === 'ADD') {
+            for (const s of streamList) {
+              const remote = await zg.startPlayingStream(s.streamID);
+              const el = document.getElementById('remote-stream');
+              if (el) el.srcObject = remote;
+            }
           }
+        });
+
+      } else if (provider === 'agora') {
+        // === AGORA ===
+        const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
+        const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
+        zegoRef.current = { agoraClient: client, localTracks: [] };
+        await client.join(appID, roomID, token, parseInt(userID) || 0);
+        const [micTrack, camTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+        zegoRef.current.localTracks = isVideo ? [micTrack, camTrack] : [micTrack];
+        if (isVideo) {
+          camTrack.play(document.getElementById('local-stream'));
+          await client.publish([micTrack, camTrack]);
+        } else {
+          await client.publish([micTrack]);
         }
-      });
+        client.on('user-published', async (remoteUser, mediaType) => {
+          await client.subscribe(remoteUser, mediaType);
+          if (mediaType === 'video') remoteUser.videoTrack.play(document.getElementById('remote-stream'));
+          if (mediaType === 'audio') remoteUser.audioTrack.play();
+        });
+
+      } else if (provider === 'hms') {
+        // === 100MS ===
+        const { HMSReactiveStore } = await import('@100mslive/hms-video-store');
+        const hms = new HMSReactiveStore();
+        const hmsActions = hms.getHMSActions();
+        zegoRef.current = { hmsActions };
+        await hmsActions.join({ authToken: token, userName, settings: { isAudioMuted: false, isVideoMuted: !isVideo } });
+        // 100ms handles UI via their SDK — simplified for web
+      }
 
       // Start UI timer
-      timerRef.current = setInterval(() => {
-        setTimer(prev => prev + 1);
-      }, 1000);
-      console.log('Step 11: Call connected!');
+      timerRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
+      console.log('Call connected! Provider:', provider);
 
     } catch (err) {
-      console.error('Zego error at step:', err);
+      console.error('Call error:', err);
       toast.error('Failed to connect call: ' + (err.message || JSON.stringify(err)));
     }
   };
 
   const stopZegoCall = () => {
-    if (zegoRef.current) {
-      try {
+    if (!zegoRef.current) return;
+    try {
+      if (zegoRef.current.agoraClient) {
+        // Agora cleanup
+        zegoRef.current.localTracks?.forEach(t => { t.stop(); t.close(); });
+        zegoRef.current.agoraClient.leave();
+      } else if (zegoRef.current.hmsActions) {
+        // 100ms cleanup
+        zegoRef.current.hmsActions.leave();
+      } else {
+        // Zegocloud cleanup
         zegoRef.current.stopPublishingStream();
         zegoRef.current.logoutRoom();
         zegoRef.current.destroyEngine();
-      } catch (e) {}
-      zegoRef.current = null;
-    }
+      }
+    } catch (e) {}
+    zegoRef.current = null;
   };
 
   const handleEndCall = () => {
@@ -217,6 +229,13 @@ const CallRoom = () => {
             <p className="call-type-label">{isVideo ? 'Video' : 'Audio'} Call</p>
             <p className="call-waiting">Waiting for astrologer to accept...</p>
             <div className="call-spinner"></div>
+            <button className="cancel-call-btn" onClick={async () => {
+              try {
+                await callApi.cancelCall({ callId: parseInt(callId) });
+                toast.info('Call cancelled');
+                navigate('/talk-to-astrologer');
+              } catch(e) { toast.error('Failed to cancel'); }
+            }}>Cancel Call</button>
           </div>
         )}
 

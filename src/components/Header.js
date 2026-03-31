@@ -71,6 +71,7 @@ const Header = () => {
                   <Link to="/call-history">My Calls</Link>
                   <Link to="/following">My Following</Link>
                   <Link to="/recommended-pujas">Recommended Pujas</Link>
+                  <Link to="/refer-earn">Refer & Earn</Link>
                   <button onClick={handleLogout}>Logout</button>
                 </div>
               )}

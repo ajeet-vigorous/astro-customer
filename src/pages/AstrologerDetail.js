@@ -153,21 +153,20 @@ const AstrologerDetail = () => {
       } else {
         res = await callApi.addRequest({
           astrologerId: id,
-          callRate: charge,
+          callRate: intakeType === 'video' ? (astro.videoCallRate || charge) : charge,
           call_duration: selectedDuration * 60,
-          call_type: 10,
+          call_type: intakeType === 'video' ? 11 : 10,
         });
       }
 
       const d = res.data;
       if (d?.status === 200) {
-        toast.success(d.message || `${intakeType === 'chat' ? 'Chat' : 'Call'} request sent! Waiting for astrologer to accept.`);
+        toast.success(d.message || `${intakeType === 'chat' ? 'Chat' : intakeType === 'video' ? 'Video Call' : 'Call'} request sent!`);
         setShowIntake(false);
-        // Navigate to chat/call room
         if (intakeType === 'chat' && d?.recordList?.id) {
           navigate(`/chat-room/${d.recordList.id}`);
-        } else if (intakeType === 'call' && d?.recordList?.id) {
-          navigate(`/call-room/${d.recordList.id}`);
+        } else if ((intakeType === 'call' || intakeType === 'video') && (d?.recordList?.id || d?.callId)) {
+          navigate(`/call-room/${d.recordList?.id || d.callId}`);
         }
       } else {
         toast.error(d?.message || 'Request failed');
@@ -230,7 +229,10 @@ const AstrologerDetail = () => {
               <p className="detail-price">&#8377;{charge}/min</p>
               <div className="detail-actions">
                 <button className="detail-call-btn" onClick={handleCall} disabled={astro.callStatus === 'Offline'}>
-                  &#128222; Call Now
+                  &#128222; Audio Call
+                </button>
+                <button className="detail-video-btn" onClick={() => { setIntakeType('video'); setShowIntake(true); }} disabled={astro.callStatus === 'Offline'}>
+                  &#128249; Video Call
                 </button>
                 <button className="detail-chat-btn" onClick={handleChat} disabled={astro.chatStatus === 'Offline'}>
                   &#128172; Chat Now

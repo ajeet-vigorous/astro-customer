@@ -17,6 +17,9 @@
 .detail-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .detail-call-btn, .detail-chat-btn { padding: 12px 28px; border: none; border-radius: 50px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.3s; }
 .detail-call-btn { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a0533; }
+.detail-video-btn { padding: 12px 28px; border: none; border-radius: 50px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.3s; background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
+.detail-video-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(37,99,235,0.3); }
+.detail-video-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .detail-chat-btn { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
 .detail-call-btn:hover, .detail-chat-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); }
 .detail-section { margin-top: 32px; }

@@ -28,6 +28,7 @@
 .astro-action-btn { width: 100%; padding: 10px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.9rem; transition: all 0.3s; margin-top: auto; }
 .astro-action-btn.call-btn { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: #1a0533; }
 .astro-action-btn.chat-btn { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+.astro-action-btn.video-btn { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
 .astro-action-btn:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
 .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 32px; }
 .pagination button { background: #7c3aed; color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; }

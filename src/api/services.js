@@ -73,6 +73,12 @@ export const walletApi = {
   cancelPayment: (data) => API.post('/customer/cancelPayment', data),
 };
 
+// Referral
+export const referralApi = {
+  getInfo: () => API.post('/customer/getReferralInfo'),
+  applyCode: (data) => API.post('/customer/applyReferralCode', data),
+};
+
 // Report
 export const reportApi = {
   addReport: (data) => API.post('/customer/userReport/add', data),
@@ -132,6 +138,9 @@ export const productApi = {
   getCategories: () => API.post('/customer/getproductCategory'),
   getProducts: (params) => API.post('/customer/getAstromallProduct', params),
   getProductById: (params) => API.post('/customer/getAstromallProductById', params),
+  placeOrder: (data) => API.post('/customer/placeProductOrder', data),
+  getAddresses: () => API.post('/customer/getOrderAddress'),
+  addAddress: (data) => API.post('/customer/addOrderAddress', data),
 };
 
 // Puja
@@ -154,7 +163,7 @@ export const couponApi = {
 
 // User Account
 export const accountApi = {
-  getOrders: (params) => API.post('/customer/getOrderAddress', params),
+  getOrders: () => API.post('/customer/getMyOrders'),
   getChatHistory: (params) => API.post('/customer/getChatHistory', params),
   getCallHistory: (params) => API.post('/customer/getCallHistory', params),
   getWallet: () => API.post('/customer/getRechargeAmount'),

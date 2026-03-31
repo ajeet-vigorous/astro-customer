@@ -42,7 +42,7 @@ const AstrologerList = () => {
     fetchAstrologers();
   };
 
-  const handleRequest = async (e, astro) => {
+  const handleRequest = async (e, astro, callType) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -58,7 +58,7 @@ const AstrologerList = () => {
       if (isChat) {
         res = await chatApi.addRequest({ astrologerId: astro.id, chatRate: astro.charge });
       } else {
-        res = await callApi.addRequest({ astrologerId: astro.id, callRate: astro.charge, call_type: 10 });
+        res = await callApi.addRequest({ astrologerId: astro.id, callRate: callType === 11 ? (astro.videoCallRate || astro.charge) : astro.charge, call_type: callType || 10 });
       }
       const d = res.data;
       if (d?.status === 200) {
@@ -118,13 +118,20 @@ const AstrologerList = () => {
                       </div>
                       <span className="astro-list-price">&#8377;{astro.charge || 0}/min</span>
                     </div>
-                    <button
-                      className={`astro-action-btn ${isChat ? 'chat-btn' : 'call-btn'}`}
-                      onClick={(e) => handleRequest(e, astro)}
-                      disabled={requestingId === astro.id}
-                    >
-                      {requestingId === astro.id ? 'Requesting...' : isChat ? 'Chat Now' : 'Call Now'}
-                    </button>
+                    {isChat ? (
+                      <button className="astro-action-btn chat-btn" onClick={(e) => handleRequest(e, astro)} disabled={requestingId === astro.id}>
+                        {requestingId === astro.id ? 'Requesting...' : 'Chat Now'}
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="astro-action-btn call-btn" onClick={(e) => handleRequest(e, astro, 10)} disabled={requestingId === astro.id}>
+                          {requestingId === astro.id ? '...' : '📞 Audio'}
+                        </button>
+                        <button className="astro-action-btn video-btn" onClick={(e) => handleRequest(e, astro, 11)} disabled={requestingId === astro.id}>
+                          {requestingId === astro.id ? '...' : '📹 Video'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </Link>
               ))}

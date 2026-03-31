@@ -33,6 +33,7 @@ import CallRoom from './pages/CallRoom';
 import AiAstrologerList from './pages/AiAstrologerList';
 import AiChat from './pages/AiChat';
 import RecommendedPujas from './pages/RecommendedPujas';
+import ReferEarn from './pages/ReferEarn';
 import './App.css';
 
 // ProfileGuard — logged in user must complete profile before accessing protected pages
@@ -87,6 +88,7 @@ function App() {
             <Route path="/ai-astrologer" element={<ProfileGuard><AiAstrologerList /></ProfileGuard>} />
             <Route path="/ai-chat/:id" element={<ProfileGuard><AiChat /></ProfileGuard>} />
             <Route path="/recommended-pujas" element={<ProfileGuard><RecommendedPujas /></ProfileGuard>} />
+            <Route path="/refer-earn" element={<ProfileGuard><ReferEarn /></ProfileGuard>} />
             <Route path="/following" element={<ProfileGuard><Following /></ProfileGuard>} />
           </Routes>
         </main>

@@ -19,6 +19,8 @@
 
 .call-spinner { width: 30px; height: 30px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #7c3aed; border-radius: 50%; animation: spin 1s linear infinite; margin: 20px auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.cancel-call-btn { background: rgba(255,255,255,0.15); color: #fff; border: 2px solid rgba(255,255,255,0.3); padding: 12px 36px; border-radius: 50px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 20px; transition: all 0.3s; }
+.cancel-call-btn:hover { background: #ef4444; border-color: #ef4444; }
 
 /* Active Call */
 .call-active-screen { text-align: center; color: #fff; }
