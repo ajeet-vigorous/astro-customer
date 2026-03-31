@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { chatApi, astrologerApi } from '../api/services';
+import { chatApi, astrologerApi, pujaApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
@@ -20,6 +20,7 @@ const ChatRoom = () => {
   const [sending, setSending] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
   const [typing, setTyping] = useState(false);
+  const [recommendedPuja, setRecommendedPuja] = useState(null);
   const [walletBalance, setWalletBalance] = useState(0);
   const [showRating, setShowRating] = useState(false);
   const [ratingValue, setRatingValue] = useState(5);
@@ -165,6 +166,20 @@ const ChatRoom = () => {
         }
       } catch(e) {}
     }, 3000);
+
+    // Puja recommended by astrologer — show card in chat
+    socket.on('puja-recommended', (data) => {
+      if (String(data.userId) !== String(user?.id)) return;
+      setRecommendedPuja(data);
+      // Add as system message in chat
+      setMessages(prev => [...prev, {
+        id: 'puja_' + Date.now(),
+        senderType: 'system',
+        message: `__PUJA_CARD__`,
+        pujaData: data,
+        created_at: new Date().toISOString()
+      }]);
+    });
 
     // Chat ended
     socket.on('chat-ended', async (data) => {
@@ -332,13 +347,30 @@ const ChatRoom = () => {
       <div className="chatroom-messages">
         {messages.length > 0 && (
           messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`chat-bubble ${msg.senderType === 'user' || msg.senderId === user?.id ? 'sent' : 'received'}`}
-            >
-              <p className="bubble-text">{msg.message}</p>
-              <span className="bubble-time">{formatMsgTime(msg.created_at)}</span>
-            </div>
+            msg.message === '__PUJA_CARD__' && msg.pujaData ? (
+              <div key={msg.id} style={{ margin: '12px auto', maxWidth: '85%', background: '#fffbeb', border: '2px solid #f59e0b', borderRadius: 14, padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ background: '#f59e0b', color: '#fff', padding: '2px 10px', borderRadius: 10, fontSize: '0.75rem', fontWeight: 600 }}>Puja Recommendation</span>
+                </div>
+                <h4 style={{ margin: '0 0 4px', color: '#1a0533' }}>{msg.pujaData.pujaTitle}</h4>
+                <p style={{ margin: '0 0 4px', color: '#6b7280', fontSize: '0.8rem' }}>by {msg.pujaData.astrologerName}</p>
+                <p style={{ margin: '0 0 10px', color: '#7c3aed', fontWeight: 700, fontSize: '1.1rem' }}>&#8377;{msg.pujaData.pujaPrice || 0}</p>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => navigate(`/puja/${msg.pujaData.pujaId}`)} style={{ flex: 1, background: '#7c3aed', color: '#fff', border: 'none', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>Accept & Book</button>
+                  <button onClick={async () => {
+                    try { await pujaApi.deleteRecommended({ id: msg.pujaData.pujaId }); toast.success('Cancelled'); setMessages(prev => prev.filter(m => m.id !== msg.id)); } catch(e) {}
+                  }} style={{ flex: 1, background: '#fff', color: '#dc2626', border: '2px solid #dc2626', padding: '10px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div
+                key={msg.id}
+                className={`chat-bubble ${msg.senderType === 'user' || msg.senderId === user?.id ? 'sent' : 'received'}`}
+              >
+                <p className="bubble-text">{msg.message}</p>
+                <span className="bubble-time">{formatMsgTime(msg.created_at)}</span>
+              </div>
+            )
           ))
         )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { astrologerApi, chatApi, callApi, walletApi } from '../api/services';
+import { astrologerApi, chatApi, callApi, walletApi, giftApi, reportApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import './AstrologerDetail.css';
@@ -25,6 +25,12 @@ const AstrologerDetail = () => {
   const [callLoading, setCallLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [showGifts, setShowGifts] = useState(false);
+  const [gifts, setGifts] = useState([]);
+  const [sendingGift, setSendingGift] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportForm, setReportForm] = useState({ firstName: '', lastName: '', gender: '', birthDate: '', birthTime: '', birthPlace: '', maritalStatus: '', occupation: '', comments: '', reportType: 'Kundali' });
+  const [reportSubmitting, setReportSubmitting] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -232,6 +238,16 @@ const AstrologerDetail = () => {
                 <button className={`detail-follow-btn ${isFollowing ? 'following' : ''}`} onClick={handleFollow} disabled={followLoading}>
                   {followLoading ? '...' : isFollowing ? '&#10003; Following' : '+ Follow'}
                 </button>
+                <button className="detail-gift-btn" onClick={async () => {
+                  if (!user) { toast.error('Please login first'); navigate('/login'); return; }
+                  try { const res = await giftApi.getAll(); setGifts(res.data?.recordList || []); } catch(e) {}
+                  setShowGifts(true);
+                }}>&#127873; Send Gift</button>
+                <button className="detail-report-btn" onClick={() => {
+                  if (!user) { toast.error('Please login first'); navigate('/login'); return; }
+                  setReportForm(prev => ({ ...prev, firstName: user.name || '' }));
+                  setShowReport(true);
+                }}>&#128196; Get Report</button>
               </div>
             </div>
           </div>
@@ -387,6 +403,76 @@ const AstrologerDetail = () => {
                 {submitting ? 'Sending Request...' : `Start ${intakeType === 'chat' ? 'Chat' : 'Call'}`}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Report Modal */}
+      {showReport && (
+        <div className="intake-overlay" onClick={() => setShowReport(false)}>
+          <div className="intake-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="intake-close" onClick={() => setShowReport(false)}>&times;</button>
+            <h3>Request Report from {astro.name}</h3>
+            <p style={{ color: '#6b7280', fontSize: '0.85rem', marginBottom: 16 }}>&#8377;{astro.reportRate || 0}/report</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setReportSubmitting(true);
+              try {
+                const res = await reportApi.addReport({ ...reportForm, astrologerId: id, reportRate: astro.reportRate || 0 });
+                if (res.data?.status === 200) { toast.success('Report requested!'); setShowReport(false); }
+                else toast.error(res.data?.message || 'Failed');
+              } catch(err) { toast.error(err.response?.data?.message || 'Failed'); }
+              setReportSubmitting(false);
+            }}>
+              <div className="intake-row">
+                <div className="intake-field"><label>First Name *</label><input value={reportForm.firstName} onChange={e => setReportForm({...reportForm, firstName: e.target.value})} required /></div>
+                <div className="intake-field"><label>Last Name</label><input value={reportForm.lastName} onChange={e => setReportForm({...reportForm, lastName: e.target.value})} /></div>
+              </div>
+              <div className="intake-row">
+                <div className="intake-field"><label>Gender *</label><select value={reportForm.gender} onChange={e => setReportForm({...reportForm, gender: e.target.value})} required><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>
+                <div className="intake-field"><label>Report Type *</label><select value={reportForm.reportType} onChange={e => setReportForm({...reportForm, reportType: e.target.value})}><option value="Kundali">Kundali</option><option value="Career">Career</option><option value="Marriage">Marriage</option><option value="Health">Health</option><option value="Finance">Finance</option></select></div>
+              </div>
+              <div className="intake-row">
+                <div className="intake-field"><label>Birth Date *</label><input type="date" value={reportForm.birthDate} onChange={e => setReportForm({...reportForm, birthDate: e.target.value})} required /></div>
+                <div className="intake-field"><label>Birth Time</label><input type="time" value={reportForm.birthTime} onChange={e => setReportForm({...reportForm, birthTime: e.target.value})} /></div>
+              </div>
+              <div className="intake-row">
+                <div className="intake-field"><label>Birth Place</label><input value={reportForm.birthPlace} onChange={e => setReportForm({...reportForm, birthPlace: e.target.value})} placeholder="City, State" /></div>
+                <div className="intake-field"><label>Marital Status</label><select value={reportForm.maritalStatus} onChange={e => setReportForm({...reportForm, maritalStatus: e.target.value})}><option value="">Select</option><option value="Single">Single</option><option value="Married">Married</option><option value="Divorced">Divorced</option></select></div>
+              </div>
+              <div className="intake-field full"><label>Comments</label><textarea value={reportForm.comments} onChange={e => setReportForm({...reportForm, comments: e.target.value})} rows={2} placeholder="Any specific questions..." /></div>
+              <button type="submit" className="intake-submit" disabled={reportSubmitting}>{reportSubmitting ? 'Submitting...' : `Request Report - ₹${astro.reportRate || 0}`}</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Gift Modal */}
+      {showGifts && (
+        <div className="intake-overlay" onClick={() => setShowGifts(false)}>
+          <div className="intake-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 450 }}>
+            <button className="intake-close" onClick={() => setShowGifts(false)}>&times;</button>
+            <h3>Send Gift to {astro.name}</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginTop: 16 }}>
+              {gifts.map(g => (
+                <div key={g.id} onClick={async () => {
+                  if (sendingGift) return;
+                  setSendingGift(true);
+                  try {
+                    const res = await giftApi.send({ astrologerId: id, giftId: g.id, amount: g.amount });
+                    if (res.data?.status === 200) { toast.success('Gift sent!'); setShowGifts(false); }
+                    else toast.error(res.data?.message || 'Failed');
+                  } catch(e) { toast.error(e.response?.data?.message || 'Failed'); }
+                  setSendingGift(false);
+                }} style={{ cursor: 'pointer', textAlign: 'center', padding: 12, border: '2px solid #e0d4f5', borderRadius: 12, transition: 'all 0.2s' }}
+                  onMouseOver={e => e.currentTarget.style.borderColor = '#7c3aed'}
+                  onMouseOut={e => e.currentTarget.style.borderColor = '#e0d4f5'}>
+                  {g.image && <img src={g.image.startsWith('http') ? g.image : `http://localhost:5000/${g.image}`} alt={g.name} style={{ width: 50, height: 50, objectFit: 'contain' }} />}
+                  <p style={{ margin: '6px 0 2px', fontWeight: 600, fontSize: '0.85rem' }}>{g.name}</p>
+                  <p style={{ margin: 0, color: '#7c3aed', fontWeight: 700 }}>&#8377;{g.amount}</p>
+                </div>
+              ))}
+            </div>
+            {gifts.length === 0 && <p style={{ textAlign: 'center', color: '#9ca3af', padding: 20 }}>No gifts available</p>}
           </div>
         </div>
       )}

@@ -66,6 +66,8 @@
 .chat-btn:hover { background: #34d399; }
 .panchang-btn { background: #f59e0b; color: #fff; }
 .panchang-btn:hover { background: #d97706; }
+.ai-btn { background: linear-gradient(135deg, #7c3aed, #a78bfa); color: #fff; }
+.ai-btn:hover { background: linear-gradient(135deg, #6d28d9, #7c3aed); }
 .header-right {
   display: flex;
   align-items: center;

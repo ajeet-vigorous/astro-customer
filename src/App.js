@@ -30,6 +30,9 @@ import StaticPage from './pages/StaticPage';
 import Contact from './pages/Contact';
 import ChatRoom from './pages/ChatRoom';
 import CallRoom from './pages/CallRoom';
+import AiAstrologerList from './pages/AiAstrologerList';
+import AiChat from './pages/AiChat';
+import RecommendedPujas from './pages/RecommendedPujas';
 import './App.css';
 
 // ProfileGuard — logged in user must complete profile before accessing protected pages
@@ -81,6 +84,9 @@ function App() {
             <Route path="/call-history" element={<ProfileGuard><CallHistory /></ProfileGuard>} />
             <Route path="/chat-room/:chatId" element={<ProfileGuard><ChatRoom /></ProfileGuard>} />
             <Route path="/call-room/:callId" element={<ProfileGuard><CallRoom /></ProfileGuard>} />
+            <Route path="/ai-astrologer" element={<ProfileGuard><AiAstrologerList /></ProfileGuard>} />
+            <Route path="/ai-chat/:id" element={<ProfileGuard><AiChat /></ProfileGuard>} />
+            <Route path="/recommended-pujas" element={<ProfileGuard><RecommendedPujas /></ProfileGuard>} />
             <Route path="/following" element={<ProfileGuard><Following /></ProfileGuard>} />
           </Routes>
         </main>

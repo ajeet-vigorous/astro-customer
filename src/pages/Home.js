@@ -10,18 +10,20 @@ const Home = () => {
   const [blogs, setBlogs] = useState([]);
   const [products, setProducts] = useState([]);
   const [pujaCategories, setPujaCategories] = useState([]);
+  const [recommendedPujas, setRecommendedPujas] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [bannersRes, astroRes, horoRes, blogRes, prodRes, pujaRes] = await Promise.allSettled([
+        const [bannersRes, astroRes, horoRes, blogRes, prodRes, pujaRes, recPujaRes] = await Promise.allSettled([
           homeApi.getBanners(),
           homeApi.getAstrologers({ startIndex: 0, fetchRecord: 8 }),
           horoscopeApi.getSigns(),
           blogApi.getAll(),
           productApi.getProducts({}),
           pujaApi.getCategories(),
+          pujaApi.getRecommended(),
         ]);
 
         if (bannersRes.status === 'fulfilled') {
@@ -48,6 +50,9 @@ const Home = () => {
         if (pujaRes.status === 'fulfilled') {
           const d = pujaRes.value.data?.data || pujaRes.value.data;
           setPujaCategories(Array.isArray(d) ? d : d?.recordList || []);
+        }
+        if (recPujaRes?.status === 'fulfilled') {
+          setRecommendedPujas(recPujaRes.value.data?.recordList || []);
         }
       } catch (err) {
         console.error('Error loading home data:', err);
@@ -170,6 +175,30 @@ const Home = () => {
                   {cat.image && <img src={cat.image.startsWith('http') ? cat.image : `http://localhost:5000${cat.image}`} alt={cat.title || cat.name} />}
                   <h5>{cat.title || cat.name}</h5>
                 </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Recommended Pujas by Astrologer */}
+      {recommendedPujas.length > 0 && (
+        <section className="section" style={{ background: '#fffbeb' }}>
+          <div className="container">
+            <div className="section-header">
+              <h3 className="section-title">Recommended for You</h3>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+              {recommendedPujas.map(p => (
+                <div key={p.puja_suggested_id || p.id} style={{ background: '#fff', borderRadius: 12, padding: 16, border: '2px solid #f59e0b', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <h4 style={{ margin: 0, fontSize: '1rem' }}>{p.puja_title}</h4>
+                    <span style={{ background: '#f59e0b', color: '#fff', padding: '2px 8px', borderRadius: 10, fontSize: '0.7rem', fontWeight: 600 }}>Recommended</span>
+                  </div>
+                  <p style={{ color: '#6b7280', fontSize: '0.85rem', margin: '4px 0' }}>by {p.astrologername || 'Astrologer'}</p>
+                  <p style={{ color: '#7c3aed', fontWeight: 700, fontSize: '1.1rem' }}>&#8377;{p.puja_price || 0}</p>
+                  <Link to={`/puja/${p.id}`} style={{ display: 'block', textAlign: 'center', background: '#7c3aed', color: '#fff', padding: '10px', borderRadius: 8, textDecoration: 'none', fontWeight: 600, marginTop: 8 }}>Book Now</Link>
+                </div>
               ))}
             </div>
           </div>

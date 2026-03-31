@@ -52,6 +52,7 @@ const Header = () => {
           <Link to="/talk-to-astrologer" className="nav-btn call-btn">Talk to Astrologer</Link>
           <Link to="/chat-with-astrologer" className="nav-btn chat-btn">Chat with Astrologer</Link>
           <Link to="/panchang" className="nav-btn panchang-btn">Panchang</Link>
+          <Link to="/ai-astrologer" className="nav-btn ai-btn">AI Astrologer</Link>
         </nav>
 
         <div className="header-right">
@@ -69,6 +70,7 @@ const Header = () => {
                   <Link to="/chat-history">My Chats</Link>
                   <Link to="/call-history">My Calls</Link>
                   <Link to="/following">My Following</Link>
+                  <Link to="/recommended-pujas">Recommended Pujas</Link>
                   <button onClick={handleLogout}>Logout</button>
                 </div>
               )}
@@ -86,6 +88,7 @@ const Header = () => {
           <Link to="/talk-to-astrologer">Talk to Astrologer</Link>
           <Link to="/chat-with-astrologer">Chat with Astrologer</Link>
           <Link to="/panchang">Panchang</Link>
+          <Link to="/ai-astrologer">AI Astrologer</Link>
           <Link to="/horoscope">Horoscope</Link>
           <Link to="/kundali">Kundali</Link>
           <Link to="/puja">Puja</Link>

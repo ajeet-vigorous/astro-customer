@@ -68,12 +68,13 @@ const PujaList = () => {
               <div className="puja-items-grid">
                 {pujas.map(puja => (
                   <Link key={puja.id} to={`/puja/${puja.id}`} className="puja-item-card">
-                    {puja.image && <img src={puja.image.startsWith('http') ? puja.image : `http://localhost:5000${puja.image}`} alt={puja.title || puja.name} />}
+                    {(puja.puja_images?.[0] || puja.image) && <img src={(() => { const img = puja.puja_images?.[0] || puja.image || ''; return img.startsWith('http') ? img : `http://localhost:5000/${img}`; })()} alt={puja.puja_title || puja.name} />}
                     <div className="puja-item-info">
-                      <h4>{puja.title || puja.name}</h4>
-                      <p>{(puja.description || '').replace(/<[^>]+>/g, '').slice(0, 100)}</p>
+                      <h4>{puja.puja_title || puja.title || puja.name}</h4>
+                      <p className="puja-subtitle">{puja.puja_subtitle || ''}</p>
+                      <p>{(puja.long_description || puja.description || '').replace(/<[^>]+>/g, '').slice(0, 80)}...</p>
                       <div className="puja-item-bottom">
-                        <span className="puja-price">&#8377;{puja.price || puja.amount || 0}</span>
+                        <span className="puja-price">&#8377;{puja.puja_price || puja.price || 0}</span>
                         <button className="puja-book-btn">Book Now</button>
                       </div>
                     </div>

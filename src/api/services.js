@@ -73,6 +73,25 @@ export const walletApi = {
   cancelPayment: (data) => API.post('/customer/cancelPayment', data),
 };
 
+// Report
+export const reportApi = {
+  addReport: (data) => API.post('/customer/userReport/add', data),
+};
+
+// Gift
+export const giftApi = {
+  getAll: () => API.post('/customer/activeGift'),
+  send: (data) => API.post('/customer/sendGift', data),
+};
+
+// AI Chat
+export const aiChatApi = {
+  getAstrologers: () => API.post('/customer/getAiAstrologers'),
+  getById: (data) => API.post('/customer/getAiAstrologerById', data),
+  sendMessage: (data) => API.post('/customer/sendAiMessage', data),
+  getHistory: (data) => API.post('/customer/getAiChatHistory', data),
+};
+
 // Horoscope
 export const horoscopeApi = {
   getSigns: () => API.post('/customer/getHororscopeSign'),
@@ -123,6 +142,8 @@ export const pujaApi = {
   getDetails: (params) => API.post('/customer/getPujaDetails', params),
   getFaq: (params) => API.post('/customer/getPujafaq', params),
   placeOrder: (data) => API.post('/customer/placedPujaOrder', data),
+  getRecommended: () => API.post('/astro/suggestedAstrologerPuja'),
+  deleteRecommended: (data) => API.post('/astro/deleteSuggestedPuja', data),
 };
 
 // Coupon
