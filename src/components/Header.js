@@ -90,6 +90,7 @@ const Header = () => {
           <Link to="/chat-with-astrologer">Chat with Astrologer</Link>
           <Link to="/panchang">Panchang</Link>
           <Link to="/ai-astrologer">AI Astrologer</Link>
+          <Link to="/astro-services">Astro Services</Link>
           <Link to="/horoscope">Horoscope</Link>
           <Link to="/kundali">Kundali</Link>
           <Link to="/puja">Puja</Link>

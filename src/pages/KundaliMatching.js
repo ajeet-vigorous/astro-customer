@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { kundaliApi } from '../api/services';
 import { toast } from 'react-toastify';
 import './Kundali.css';
@@ -11,19 +11,30 @@ const KundaliMatching = () => {
   const boyDebounce = useRef(null);
   const girlDebounce = useRef(null);
 
-  const geocodePlace = (place, setter, data, debounceRef) => {
+  const [boySuggestions, setBoySuggestions] = useState([]);
+  const [girlSuggestions, setGirlSuggestions] = useState([]);
+
+  const geocodePlace = (place, setter, data, debounceRef, setSugg) => {
     setter({ ...data, placeOfBirth: place, latitude: '', longitude: '' });
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (place.length < 3) return;
+    if (place.length < 2) { setSugg([]); return; }
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await kundaliApi.geocode({ place });
-        const d = res.data;
-        if (d?.latitude && d?.longitude) {
-          setter(prev => ({ ...prev, latitude: String(d.latitude), longitude: String(d.longitude) }));
-        }
-      } catch (err) { /* silently fail */ }
-    }, 800);
+        const res = await kundaliApi.placeAutocomplete({ query: place });
+        if (res.data?.suggestions?.length) setSugg(res.data.suggestions);
+        else setSugg([]);
+      } catch (err) { setSugg([]); }
+    }, 400);
+  };
+
+  const selectSuggestion = (suggestion, setter, setSugg) => {
+    setter(prev => ({ ...prev, placeOfBirth: suggestion.name, latitude: suggestion.lat ? String(suggestion.lat) : '', longitude: suggestion.lon ? String(suggestion.lon) : '' }));
+    setSugg([]);
+    if (!suggestion.lat) {
+      kundaliApi.geocode({ place: suggestion.name }).then(res => {
+        if (res.data?.latitude) setter(prev => ({ ...prev, latitude: String(res.data.latitude), longitude: String(res.data.longitude) }));
+      }).catch(() => {});
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -70,7 +81,7 @@ const KundaliMatching = () => {
     setLoading(false);
   };
 
-  const PersonForm = ({ data, setData, label, debounceRef }) => (
+  const PersonForm = ({ data, setData, label, debounceRef, suggestions, setSugg }) => (
     <div className="match-person">
       <h4>{label}'s Details</h4>
       <div className="form-group">
@@ -88,8 +99,19 @@ const KundaliMatching = () => {
       <div className="form-group">
         <label>Place of Birth</label>
         <div className="place-input-wrap">
-          <input type="text" value={data.placeOfBirth} onChange={(e) => geocodePlace(e.target.value, setData, data, debounceRef)} placeholder="Enter city name" />
+          <input type="text" value={data.placeOfBirth} onChange={(e) => geocodePlace(e.target.value, setData, data, debounceRef, setSugg)} onBlur={() => setTimeout(() => setSugg([]), 200)} autoComplete="off" placeholder="Enter city name" />
           {data.latitude && data.longitude && <span className="place-check">✓</span>}
+          {suggestions.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e0d4f5', borderRadius: '0 0 10px 10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, maxHeight: 180, overflowY: 'auto' }}>
+              {suggestions.map((s, i) => (
+                <div key={i} onClick={() => selectSuggestion(s, setData, setSugg)} style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', fontSize: '0.85rem' }}
+                  onMouseOver={e => e.currentTarget.style.background = '#f9f5ff'}
+                  onMouseOut={e => e.currentTarget.style.background = '#fff'}>
+                  📍 {s.name}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         {data.latitude && <span className="place-coords">Lat: {data.latitude}, Lon: {data.longitude}</span>}
       </div>
@@ -172,8 +194,8 @@ const KundaliMatching = () => {
       <div className="container">
         <form className="matching-form" onSubmit={handleSubmit}>
           <div className="matching-grid">
-            <PersonForm data={boy} setData={setBoy} label="Boy" debounceRef={boyDebounce} />
-            <PersonForm data={girl} setData={setGirl} label="Girl" debounceRef={girlDebounce} />
+            <PersonForm data={boy} setData={setBoy} label="Boy" debounceRef={boyDebounce} suggestions={boySuggestions} setSugg={setBoySuggestions} />
+            <PersonForm data={girl} setData={setGirl} label="Girl" debounceRef={girlDebounce} suggestions={girlSuggestions} setSugg={setGirlSuggestions} />
           </div>
           <button type="submit" className="kundali-btn match-btn" disabled={loading}>
             {loading ? 'Matching...' : 'Match Kundali'}

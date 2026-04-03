@@ -13,7 +13,10 @@ const ReferEarn = () => {
 
   useEffect(() => {
     if (!user) return;
-    referralApi.getInfo().then(res => setData(res.data)).catch(() => {}).finally(() => setLoading(false));
+    referralApi.getInfo().then(res => {
+      console.log('Referral response:', res.data);
+      setData(res.data);
+    }).catch((err) => { console.error('Referral error:', err.response?.data || err.message); }).finally(() => setLoading(false));
   }, [user]);
 
   const handleCopy = () => {

@@ -84,6 +84,16 @@ export const reportApi = {
   addReport: (data) => API.post('/customer/userReport/add', data),
 };
 
+// Astro Features
+export const astroApi = {
+  numerology: (data) => API.post('/customer/numerology', data),
+  muhurat: (data) => API.post('/customer/muhurat', data),
+  remedies: (data) => API.post('/customer/remedies', data),
+  transit: (data) => API.post('/customer/transit', data),
+  tarot: (data) => API.post('/customer/tarot', data),
+  kundaliPDF: (data) => API.post('/customer/kundali/downloadPDF', data, { responseType: 'blob' }),
+};
+
 // Gift
 export const giftApi = {
   getAll: () => API.post('/customer/activeGift'),
@@ -125,6 +135,7 @@ export const kundaliApi = {
   getFullReport: (data) => API.post('/customer/kundali/getKundaliReport', data),
   getPanchang: (data) => API.post('/customer/get/panchang', data),
   geocode: (data) => API.post('/customer/geocode', data),
+  placeAutocomplete: (data) => API.post('/customer/place-autocomplete', data),
 };
 
 // Blog

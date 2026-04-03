@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { kundaliApi } from '../api/services';
+import { kundaliApi, astroApi } from '../api/services';
+import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import './Kundali.css';
 
@@ -10,29 +11,52 @@ const Kundali = () => {
   const [loading, setLoading] = useState(false);
   const [placeLoading, setPlaceLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceRef = useRef(null);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  // Auto-fetch lat/lon when place changes
+  // Auto-fetch suggestions when place changes
   const handlePlaceChange = (e) => {
     const place = e.target.value;
     setForm(prev => ({ ...prev, birthPlace: place, latitude: '', longitude: '' }));
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (place.length < 3) return;
+    if (place.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
 
     debounceRef.current = setTimeout(async () => {
       setPlaceLoading(true);
       try {
-        const res = await kundaliApi.geocode({ place });
-        const d = res.data;
-        if (d?.latitude && d?.longitude) {
-          setForm(prev => ({ ...prev, latitude: String(d.latitude), longitude: String(d.longitude) }));
+        const res = await kundaliApi.placeAutocomplete({ query: place });
+        if (res.data?.suggestions?.length) {
+          setSuggestions(res.data.suggestions);
+          setShowSuggestions(true);
+        } else {
+          setSuggestions([]);
+          setShowSuggestions(false);
         }
-      } catch (err) { /* silently fail */ }
+      } catch (err) { setSuggestions([]); }
       setPlaceLoading(false);
-    }, 800);
+    }, 400);
+  };
+
+  const selectPlace = (suggestion) => {
+    setForm(prev => ({
+      ...prev,
+      birthPlace: suggestion.name,
+      latitude: suggestion.lat ? String(suggestion.lat) : '',
+      longitude: suggestion.lon ? String(suggestion.lon) : '',
+    }));
+    setSuggestions([]);
+    setShowSuggestions(false);
+
+    // If no lat/lon in suggestion (Google), fetch via geocode
+    if (!suggestion.lat) {
+      kundaliApi.geocode({ place: suggestion.name }).then(res => {
+        if (res.data?.latitude) setForm(prev => ({ ...prev, latitude: String(res.data.latitude), longitude: String(res.data.longitude) }));
+      }).catch(() => {});
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -142,9 +166,20 @@ const Kundali = () => {
             <div className="form-group">
               <label>Place of Birth</label>
               <div className="place-input-wrap">
-                <input type="text" name="birthPlace" value={form.birthPlace} onChange={handlePlaceChange} placeholder="Enter city name e.g. Delhi, Mumbai" />
+                <input type="text" name="birthPlace" value={form.birthPlace} onChange={handlePlaceChange} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} onFocus={() => suggestions.length && setShowSuggestions(true)} placeholder="Enter city name e.g. Delhi, Mumbai" autoComplete="off" />
                 {placeLoading && <span className="place-loader"></span>}
                 {form.latitude && form.longitude && !placeLoading && <span className="place-check">✓</span>}
+                {showSuggestions && suggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e0d4f5', borderRadius: '0 0 10px 10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 10, maxHeight: 200, overflowY: 'auto' }}>
+                    {suggestions.map((s, i) => (
+                      <div key={i} onClick={() => selectPlace(s)} style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', fontSize: '0.9rem', color: '#374151' }}
+                        onMouseOver={e => e.currentTarget.style.background = '#f9f5ff'}
+                        onMouseOut={e => e.currentTarget.style.background = '#fff'}>
+                        📍 {s.name}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               {form.latitude && <span className="place-coords">Lat: {form.latitude}, Lon: {form.longitude}</span>}
             </div>
@@ -174,6 +209,26 @@ const Kundali = () => {
               </div>
 
               {activeTab === 'basic' && renderPlanetDetails()}
+
+              {/* Download PDF Button */}
+              <div style={{ marginTop: 20, textAlign: 'center' }}>
+                <button onClick={async () => {
+                  if (!window.confirm('Download detailed Kundali PDF for ₹99?')) return;
+                  try {
+                    const res = await astroApi.kundaliPDF({
+                      name: form.name, dob: form.dob.split('-').reverse().join('/'),
+                      tob: form.tob, lat: form.lat, lon: form.lon, tz: 5.5
+                    });
+                    const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                    const a = document.createElement('a'); a.href = url;
+                    a.download = 'kundali_report.pdf'; a.click();
+                    window.URL.revokeObjectURL(url);
+                    toast.success('PDF downloaded!');
+                  } catch(e) { toast.error('Failed to download PDF'); }
+                }} style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', color: '#fff', border: 'none', padding: '14px 36px', borderRadius: 50, fontSize: '1rem', fontWeight: 600, cursor: 'pointer' }}>
+                  📄 Download Full Kundali PDF — ₹99
+                </button>
+              </div>
             </div>
           )}
         </div>
