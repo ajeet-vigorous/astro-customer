@@ -3,7 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { useAuth } from './context/AuthContext';
+import { ActiveChatProvider, useActiveChatRedirect } from './context/ActiveChatContext';
 import Header from './components/Header';
+import FloatingChatBubble from './components/FloatingChatBubble';
 import Footer from './components/Footer';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -46,11 +48,16 @@ const ProfileGuard = ({ children }) => {
   return children;
 };
 
+const ChatRedirect = () => { useActiveChatRedirect(); return null; };
+
 function App() {
   return (
     <Router>
+      <ActiveChatProvider>
+      <ChatRedirect />
       <div className="App">
         <Header />
+        <FloatingChatBubble />
         <main className="main-content">
           <Routes>
             {/* Public pages — no profile guard */}
@@ -97,6 +104,7 @@ function App() {
         <Footer />
         <ToastContainer position="top-right" autoClose={3000} />
       </div>
+      </ActiveChatProvider>
     </Router>
   );
 }

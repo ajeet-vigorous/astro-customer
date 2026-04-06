@@ -64,3 +64,13 @@
 .rating-submit { flex: 1; padding: 12px; background: #7c3aed; color: #fff; border: none; border-radius: 10px; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
 .rating-submit:disabled { opacity: 0.5; }
 .rating-skip { padding: 12px 20px; background: none; border: 2px solid #d1d5db; border-radius: 10px; color: #6b7280; font-weight: 600; cursor: pointer; }
+
+/* Message Ticks */
+.msg-tick {
+  margin-left: 4px;
+  font-size: 0.7rem;
+  letter-spacing: -1px;
+}
+.msg-tick.sent { color: rgba(255,255,255,0.5); }
+.msg-tick.delivered { color: rgba(255,255,255,0.7); }
+.msg-tick.read { color: #34d399; }

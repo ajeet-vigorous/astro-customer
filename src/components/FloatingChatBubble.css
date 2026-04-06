@@ -1,0 +1,115 @@
+/* Floating Chat Bubble */
+.fcb-container {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  z-index: 9999;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: fcbSlideIn 0.3s ease;
+}
+
+@keyframes fcbSlideIn {
+  from { transform: translateY(50px) scale(0.5); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.fcb-bubble {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed, #a78bfa);
+  box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.2s;
+}
+
+.fcb-container:hover .fcb-bubble {
+  transform: scale(1.1);
+}
+
+.fcb-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fcb-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.fcb-initial {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  position: absolute;
+}
+
+.fcb-avatar img + .fcb-initial {
+  display: none;
+}
+
+.fcb-online-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 3px solid #fff;
+  animation: fcbBlink 1.5s infinite;
+}
+
+@keyframes fcbBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.fcb-timer {
+  background: #0f172a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.5px;
+}
+
+/* Pulse animation when time is low */
+.fcb-pulse .fcb-bubble {
+  animation: fcbPulseAnim 1s infinite;
+}
+
+.fcb-pulse .fcb-timer {
+  background: #dc2626;
+}
+
+@keyframes fcbPulseAnim {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+  70% { box-shadow: 0 0 0 15px rgba(220, 38, 38, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .fcb-container { bottom: 70px; right: 14px; }
+  .fcb-bubble { width: 50px; height: 50px; }
+  .fcb-initial { font-size: 20px; }
+  .fcb-timer { font-size: 10px; padding: 2px 8px; }
+}

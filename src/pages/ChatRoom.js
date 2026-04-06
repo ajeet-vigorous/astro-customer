@@ -4,6 +4,7 @@ import { chatApi, astrologerApi, pujaApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import { io } from 'socket.io-client';
+import { useActiveChat } from '../context/ActiveChatContext';
 import './ChatRoom.css';
 
 const SOCKET_URL = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
@@ -12,6 +13,7 @@ const ChatRoom = () => {
   const { chatId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { startChat, updateChat, endChat: clearActiveChat } = useActiveChat();
   const [chatRequest, setChatRequest] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -50,7 +52,7 @@ const ChatRoom = () => {
     };
   }, [chatId]);
 
-  // Auto scroll to bottom
+  // Auto scroll to bottom + mark messages as read
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -69,14 +71,15 @@ const ChatRoom = () => {
         const chat = d?.recordList || d?.data;
         if (chat) {
           setChatRequest(chat);
+          // Set active chat context for floating bubble
+          startChat({ id: chatId, astrologerId: chat.astrologerId, astrologerName: chat.astrologerName, profileImage: chat.profileImage, chatStatus: chat.chatStatus, chatRate: chat.chatRate });
           // Calculate timer if chat is already accepted
           if (chat.chatStatus === 'Accepted' && chat.updated_at) {
             const startTime = new Date(chat.updated_at).getTime();
             const chargePerMin = parseFloat(chat.charge || 0);
             // We'll get maxDuration from socket accept event; for now estimate
             if (chargePerMin > 0) {
-              const elapsed = Math.floor((Date.now() - startTime) / 1000);
-              setTimeLeft(Math.max(0, 3600 - elapsed)); // Placeholder until socket sends real data
+              // Don't set timer here - let socket chat-accepted event handle it with real maxDuration
             }
           }
         }
@@ -103,11 +106,21 @@ const ChatRoom = () => {
     const socket = io(SOCKET_URL, {
       auth: { token },
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 2000,
     });
+
+    socketRef.current = socket; // Set ref BEFORE listeners
 
     socket.on('connect', () => {
       console.log('Socket connected:', socket.id);
       socket.emit('join-chat', { chatRequestId: parseInt(chatId) });
+      // Sync messages on reconnect
+      chatApi.getMessages({ chatRequestId: chatId }).then(res => {
+        const msgs = res.data?.recordList || res.data?.data || [];
+        if (Array.isArray(msgs) && msgs.length > 0) setMessages(msgs);
+      }).catch(() => {});
     });
 
     // New message received
@@ -116,18 +129,35 @@ const ChatRoom = () => {
         if (prev.find(m => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
+      // If message is from astrologer (other person), mark as delivered then read
+      if (msg.senderType === 'astrologer' && msg.senderId !== user?.id) {
+        socket.emit('message-delivered', { chatRequestId: parseInt(chatId), messageIds: [msg.id] });
+        // Mark as read after 2 sec (chat screen is open)
+        setTimeout(() => {
+          if (socketRef.current?.connected) {
+            socketRef.current.emit('message-read', { chatRequestId: parseInt(chatId), messageIds: [msg.id] });
+          }
+        }, 2000);
+      }
     });
 
-    // Chat accepted handler
+    // Message status updates (sent → delivered → read)
+    socket.on('messages-status-update', ({ messageIds, status }) => {
+      setMessages(prev => prev.map(m => messageIds.includes(m.id) ? { ...m, status } : m));
+    });
+
+
+    // Chat accepted handler - runs ONLY ONCE
+    let chatAccepted = false;
     const onChatAccepted = (data) => {
+      if (chatAccepted) return; // Already accepted, don't override timer
       if (data.chatRequestId && String(data.chatRequestId) !== String(chatId)) return;
-      setChatRequest(prev => {
-        if (prev?.chatStatus === 'Accepted') return prev;
-        return { ...prev, chatStatus: 'Accepted' };
-      });
+      chatAccepted = true;
+      setChatRequest(prev => ({ ...prev, chatStatus: 'Accepted' }));
       setWalletBalance(data.walletBalance || 0);
-      toast.success(`${data.astrologerName || 'Astrologer'} ne chat accept kar li!`);
       const maxDuration = data.maxDuration || 3600;
+      updateChat({ chatStatus: 'Accepted', startTime: Date.now(), maxDuration, astrologerName: data.astrologerName });
+      toast.success(`${data.astrologerName || 'Astrologer'} ne chat accept kar li!`);
       setTimeLeft(maxDuration);
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = setInterval(() => {
@@ -149,14 +179,16 @@ const ChatRoom = () => {
     socket.on('chat-rejected', onChatRejected);
     socket.on('chat-rejected-global', onChatRejected);
 
-    // Fallback: Poll chat status every 3 seconds (in case socket event missed)
+    // Fallback: Poll chat status every 3 seconds (only if still Pending)
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
+      if (chatAccepted) { clearInterval(pollRef.current); return; }
       try {
         const res = await chatApi.getChatDetail({ chatRequestId: chatId });
         const detail = res.data?.recordList || res.data;
         if (detail?.chatStatus === 'Accepted') {
-          onChatAccepted({ chatRequestId: chatId, astrologerName: detail.astrologerName, maxDuration: 3600, walletBalance: 0 });
+          // Don't pass hardcoded maxDuration - let socket event handle timer
+          onChatAccepted({ chatRequestId: chatId, astrologerName: detail.astrologerName, walletBalance: 0 });
           clearInterval(pollRef.current);
         } else if (detail?.chatStatus === 'Rejected') {
           onChatRejected({ chatRequestId: chatId });
@@ -186,6 +218,7 @@ const ChatRoom = () => {
       if (timerRef.current) clearInterval(timerRef.current);
       toast.info(data.message || 'Chat session ended');
       setChatRequest(prev => ({ ...prev, chatStatus: 'Completed' }));
+      clearActiveChat();
       // Check if already reviewed this astrologer
       try {
         const revRes = await astrologerApi.getReviews({ astrologerId: data.astrologerId || chatRequest?.astrologerId });
@@ -200,12 +233,12 @@ const ChatRoom = () => {
       setWalletBalance(data.balance);
     });
 
-    // Typing indicators
-    socket.on('user-typing', () => {
-      setTyping(true);
+    // Typing indicators - only show when OTHER person (astrologer) is typing
+    socket.on('user-typing', (data) => {
+      if (data?.userType === 'astrologer') setTyping(true);
     });
-    socket.on('user-stop-typing', () => {
-      setTyping(false);
+    socket.on('user-stop-typing', (data) => {
+      if (data?.userType === 'astrologer') setTyping(false);
     });
 
     // User joined
@@ -215,11 +248,26 @@ const ChatRoom = () => {
       }
     });
 
+    // Chat cancelled (Pending state)
+    socket.on('chat-cancelled', (data) => {
+      setChatRequest(prev => ({ ...prev, chatStatus: 'Cancelled' }));
+      clearActiveChat();
+      if (pollRef.current) clearInterval(pollRef.current);
+      toast.info(data.message || 'Chat request cancelled');
+      setTimeout(() => navigate('/'), 1500);
+    });
+
+    // Other user disconnected - show reconnect countdown
+    socket.on('user-disconnected', (data) => {
+      if (data.userType === 'astrologer') {
+        toast.warning('Astrologer disconnected. Waiting 30s for reconnect...', { autoClose: 10000 });
+      }
+    });
+
     socket.on('connect_error', (err) => {
       console.error('Socket connection error:', err.message);
     });
 
-    socketRef.current = socket;
   };
 
   const handleSend = async (e) => {
@@ -273,12 +321,31 @@ const ChatRoom = () => {
   };
 
   const handleEndChat = async () => {
+    const status = chatRequest?.chatStatus || 'Pending';
+
+    // Pending state → Cancel (no billing)
+    if (status === 'Pending') {
+      if (!window.confirm('Cancel this chat request?')) return;
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('cancel-chat', { chatRequestId: chatId });
+      }
+      setChatRequest(prev => ({ ...prev, chatStatus: 'Cancelled' }));
+      clearActiveChat();
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (socketRef.current) { socketRef.current.disconnect(); socketRef.current = null; }
+      toast.info('Chat request cancelled');
+      navigate('/');
+      return;
+    }
+
+    // Accepted state → End Chat with confirm
+    if (!window.confirm('Are you sure you want to end this chat?')) return;
     if (socketRef.current?.connected) {
       socketRef.current.emit('end-chat', { chatRequestId: chatId });
     }
     if (timerRef.current) clearInterval(timerRef.current);
     setChatRequest(prev => ({ ...prev, chatStatus: 'Completed' }));
-    // Check if already reviewed
+    clearActiveChat();
     try {
       const revRes = await astrologerApi.getReviews({ astrologerId: chatRequest?.astrologerId });
       const reviews = revRes.data?.recordList || revRes.data?.data || [];
@@ -368,7 +435,14 @@ const ChatRoom = () => {
                 className={`chat-bubble ${msg.senderType === 'user' || msg.senderId === user?.id ? 'sent' : 'received'}`}
               >
                 <p className="bubble-text">{msg.message}</p>
-                <span className="bubble-time">{formatMsgTime(msg.created_at)}</span>
+                <span className="bubble-time">
+                  {formatMsgTime(msg.created_at)}
+                  {(msg.senderType === 'user' || msg.senderId === user?.id) && (
+                    <span className={`msg-tick ${msg.status || 'sent'}`}>
+                      {msg.status === 'read' ? '✓✓' : msg.status === 'delivered' ? '✓✓' : '✓'}
+                    </span>
+                  )}
+                </span>
               </div>
             )
           ))
