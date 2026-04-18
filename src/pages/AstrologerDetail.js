@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { astrologerApi, chatApi, callApi, walletApi, giftApi, reportApi } from '../api/services';
+import { astrologerApi, chatApi, callApi, walletApi, giftApi, reportApi, blockAstrologerApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import './AstrologerDetail.css';
@@ -25,6 +25,8 @@ const AstrologerDetail = () => {
   const [callLoading, setCallLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockLoading, setBlockLoading] = useState(false);
   const [showGifts, setShowGifts] = useState(false);
   const [gifts, setGifts] = useState([]);
   const [sendingGift, setSendingGift] = useState(false);
@@ -61,10 +63,11 @@ const AstrologerDetail = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [astroRes, revRes, followRes] = await Promise.allSettled([
+      const [astroRes, revRes, followRes, blockRes] = await Promise.allSettled([
         astrologerApi.getById({ astrologerId: id }),
         astrologerApi.getReviews({ astrologerId: id }),
         user ? astrologerApi.getFollowing({ userId: user.id }) : Promise.resolve(null),
+        user ? blockAstrologerApi.check({ astrologerId: id }) : Promise.resolve(null),
       ]);
       if (astroRes.status === 'fulfilled') {
         const d = astroRes.value.data?.data || astroRes.value.data;
@@ -80,10 +83,35 @@ const AstrologerDetail = () => {
         const list = Array.isArray(d) ? d : d?.recordList || [];
         setIsFollowing(list.some(f => String(f.astrologerId || f.id) === String(id)));
       }
+      if (blockRes.status === 'fulfilled' && blockRes.value) {
+        setIsBlocked(!!blockRes.value.data?.isBlocked);
+      }
     } catch (err) {
       console.error(err);
     }
     setLoading(false);
+  };
+
+  const handleBlock = async () => {
+    if (!user) { toast.error('Please login first'); navigate('/login'); return; }
+    const action = isBlocked ? 'unblock' : 'block';
+    if (!window.confirm(`Are you sure you want to ${action} ${astro.name}?`)) return;
+    setBlockLoading(true);
+    try {
+      const res = isBlocked
+        ? await blockAstrologerApi.remove({ astrologerId: id })
+        : await blockAstrologerApi.add({ astrologerId: id });
+      const d = res.data;
+      if (d?.status === 200) {
+        setIsBlocked(!isBlocked);
+        toast.success(isBlocked ? 'Astrologer unblocked' : 'Astrologer blocked');
+      } else {
+        toast.error(d?.message || 'Failed');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to block astrologer');
+    }
+    setBlockLoading(false);
   };
 
   const handleFollow = async () => {
@@ -250,6 +278,23 @@ const AstrologerDetail = () => {
                   setReportForm(prev => ({ ...prev, firstName: user.name || '' }));
                   setShowReport(true);
                 }}>&#128196; Get Report</button>
+                <button
+                  className={`detail-block-btn ${isBlocked ? 'blocked' : ''}`}
+                  onClick={handleBlock}
+                  disabled={blockLoading}
+                  style={{
+                    background: isBlocked ? '#6b7280' : '#dc2626',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '10px 18px',
+                    borderRadius: 8,
+                    fontWeight: 600,
+                    cursor: blockLoading ? 'not-allowed' : 'pointer',
+                    opacity: blockLoading ? 0.6 : 1,
+                  }}
+                >
+                  {blockLoading ? '...' : isBlocked ? '\u{1F513} Unblock' : '\u{1F6AB} Block'}
+                </button>
               </div>
             </div>
           </div>

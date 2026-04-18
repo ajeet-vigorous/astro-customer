@@ -33,6 +33,14 @@ export const astrologerApi = {
   getFollowing: (data) => API.post('/customer/getFollower', data),
 };
 
+// Block Astrologer
+export const blockAstrologerApi = {
+  add: (data) => API.post('/customer/blockAstrologer/add', data),
+  remove: (data) => API.post('/customer/blockAstrologer/remove', data),
+  check: (data) => API.post('/customer/blockAstrologer/check', data),
+  list: () => API.post('/customer/blockAstrologer/list'),
+};
+
 // Chat
 export const chatApi = {
   addRequest: (data) => API.post('/customer/chatRequest/add', data),
