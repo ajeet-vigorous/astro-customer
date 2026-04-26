@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { callApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
+import { createCallSession } from '../providers';
 import { toast } from 'react-toastify';
 import io from 'socket.io-client';
 import './CallRoom.css';
@@ -13,7 +14,7 @@ const CallRoom = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const socketRef = useRef(null);
-  const zegoRef = useRef(null);
+  const sessionRef = useRef(null);
 
   const [status, setStatus] = useState('Pending'); // Pending, Accepted, Completed, Rejected
   const [callData, setCallData] = useState(null);
@@ -54,8 +55,7 @@ const CallRoom = () => {
       setCallData(prev => ({ ...prev, ...data }));
       setBalance(data.walletAmount || 0);
       toast.success('Call accepted! Connecting...');
-      // Start Zegocloud
-      startZegoCall(data);
+      startCall(data);
     });
 
     socket.on('call-rejected', () => {
@@ -66,7 +66,7 @@ const CallRoom = () => {
 
     socket.on('call-ended', async (data) => {
       setStatus('Completed');
-      stopZegoCall();
+      await stopCall();
       if (timerRef.current) clearInterval(timerRef.current);
       // Check if already reviewed this astrologer
       try {
@@ -88,110 +88,51 @@ const CallRoom = () => {
 
     return () => {
       socket.disconnect();
-      stopZegoCall();
+      stopCall();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [callId, user]);
 
-  // Start call — dynamic provider (Zegocloud / Agora / 100ms)
-  const startZegoCall = async (data) => {
+  // Start call — provider-agnostic via adapter (picks agora / zego / hms based on backend response)
+  const startCall = async (data) => {
     try {
       const tokenRes = await callApi.getZegoToken({ callId: parseInt(callId), userId: user.id });
       if (tokenRes.data?.status !== 200) { toast.error('Failed to get call token'); return; }
 
-      const { appID, roomID, userID, token, provider, serverUrl } = tokenRes.data;
       const isVideo = data.call_type == 11 || data.call_type === 'Video';
-      const userName = user.name || 'Customer';
+      const localEl = document.getElementById('local-stream');
+      const remoteEl = document.getElementById('remote-stream');
 
-      console.log('Call provider:', provider, 'roomID:', roomID);
+      console.log('Call provider:', tokenRes.data.provider, 'roomID:', tokenRes.data.roomID);
 
-      if (provider === 'zego') {
-        // === ZEGOCLOUD ===
-        const zegoModule = await import('zego-express-engine-webrtc');
-        const ZegoExpressEngine = zegoModule.ZegoExpressEngine || zegoModule.default;
-        if (!ZegoExpressEngine) { toast.error('Zegocloud SDK not loaded'); return; }
-        const zg = new ZegoExpressEngine(appID, serverUrl || 'wss://webliveroom-api.zegocloud.com/ws');
-        zegoRef.current = zg;
-        await zg.loginRoom(roomID, token, { userID: String(userID), userName });
-        const localStream = await zg.createStream({ camera: { audio: true, video: isVideo } });
-        const localEl = document.getElementById('local-stream');
-        if (localEl) localEl.srcObject = localStream;
-        await zg.startPublishingStream(`stream_${userID}`, localStream);
-        zg.on('roomStreamUpdate', async (rid, updateType, streamList) => {
-          if (updateType === 'ADD') {
-            for (const s of streamList) {
-              const remote = await zg.startPlayingStream(s.streamID);
-              const el = document.getElementById('remote-stream');
-              if (el) el.srcObject = remote;
-            }
-          }
-        });
+      sessionRef.current = await createCallSession({
+        tokenResponse: tokenRes.data,
+        localEl,
+        remoteEl,
+        isVideo,
+      });
 
-      } else if (provider === 'agora') {
-        // === AGORA ===
-        const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
-        const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
-        zegoRef.current = { agoraClient: client, localTracks: [] };
-        await client.join(appID, roomID, token, parseInt(userID) || 0);
-        const [micTrack, camTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
-        zegoRef.current.localTracks = isVideo ? [micTrack, camTrack] : [micTrack];
-        if (isVideo) {
-          camTrack.play(document.getElementById('local-stream'));
-          await client.publish([micTrack, camTrack]);
-        } else {
-          await client.publish([micTrack]);
-        }
-        client.on('user-published', async (remoteUser, mediaType) => {
-          await client.subscribe(remoteUser, mediaType);
-          if (mediaType === 'video') remoteUser.videoTrack.play(document.getElementById('remote-stream'));
-          if (mediaType === 'audio') remoteUser.audioTrack.play();
-        });
-
-      } else if (provider === 'hms') {
-        // === 100MS ===
-        const { HMSReactiveStore } = await import('@100mslive/hms-video-store');
-        const hms = new HMSReactiveStore();
-        const hmsActions = hms.getHMSActions();
-        zegoRef.current = { hmsActions };
-        await hmsActions.join({ authToken: token, userName, settings: { isAudioMuted: false, isVideoMuted: !isVideo } });
-        // 100ms handles UI via their SDK — simplified for web
-      }
-
-      // Start UI timer
       timerRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
-      console.log('Call connected! Provider:', provider);
-
+      console.log('Call connected via', sessionRef.current.provider);
     } catch (err) {
       console.error('Call error:', err);
-      toast.error('Failed to connect call: ' + (err.message || JSON.stringify(err)));
+      toast.error('Failed to connect call: ' + (err?.message || 'unknown'));
     }
   };
 
-  const stopZegoCall = () => {
-    if (!zegoRef.current) return;
-    try {
-      if (zegoRef.current.agoraClient) {
-        // Agora cleanup
-        zegoRef.current.localTracks?.forEach(t => { t.stop(); t.close(); });
-        zegoRef.current.agoraClient.leave();
-      } else if (zegoRef.current.hmsActions) {
-        // 100ms cleanup
-        zegoRef.current.hmsActions.leave();
-      } else {
-        // Zegocloud cleanup
-        zegoRef.current.stopPublishingStream();
-        zegoRef.current.logoutRoom();
-        zegoRef.current.destroyEngine();
-      }
-    } catch (e) {}
-    zegoRef.current = null;
+  const stopCall = async () => {
+    const session = sessionRef.current;
+    sessionRef.current = null;
+    if (session) {
+      try { await session.leave(); } catch (e) { console.error('Leave failed:', e); }
+    }
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
     if (socketRef.current) {
       socketRef.current.emit('end-call', { callId: parseInt(callId) });
     }
-    stopZegoCall();
+    await stopCall();
     if (timerRef.current) clearInterval(timerRef.current);
   };
 

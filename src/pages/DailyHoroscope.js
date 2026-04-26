@@ -24,7 +24,7 @@ const DailyHoroscope = () => {
       try {
         const res = await horoscopeApi.getDaily({ horoscopeSignId: signId, langcode: lang });
         const d = res.data?.data || res.data;
-        setVedicList(d?.vedicList || null);
+        setVedicList(d?.vedicList || d || null);
       } catch (err) {
         console.error(err);
       }
@@ -33,13 +33,27 @@ const DailyHoroscope = () => {
     fetchData();
   }, [signId, lang]);
 
+  // Defensive picker: try multiple field-name conventions API might use
+  const pickList = (...fields) => {
+    if (!vedicList) return [];
+    for (const f of fields) {
+      const v = vedicList[f];
+      if (Array.isArray(v) && v.length) return v;
+    }
+    return [];
+  };
+
   const getActiveData = () => {
     if (!vedicList) return null;
     switch (tab) {
-      case 'daily': return vedicList.todayHoroscope?.[0] || null;
-      case 'weekly': return vedicList.weeklyHoroScope?.[0] || null;
-      case 'yearly': return vedicList.yearlyHoroScope?.[0] || null;
-      default: return null;
+      case 'daily':
+        return pickList('todayHoroscope', 'dailyHoroscope', 'daily', 'today')[0] || null;
+      case 'weekly':
+        return pickList('weeklyHoroScope', 'weeklyHoroscope', 'weekly')[0] || null;
+      case 'yearly':
+        return pickList('yearlyHoroScope', 'yearlyHoroscope', 'yearly')[0] || null;
+      default:
+        return null;
     }
   };
 

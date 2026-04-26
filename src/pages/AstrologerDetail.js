@@ -209,6 +209,10 @@ const AstrologerDetail = () => {
     openIntakeModal('call');
   };
 
+  const handleVideoCall = async () => {
+    openIntakeModal('video');
+  };
+
   const handleChat = async () => {
     openIntakeModal('chat');
   };
@@ -259,7 +263,7 @@ const AstrologerDetail = () => {
                 <button className="detail-call-btn" onClick={handleCall} disabled={astro.callStatus === 'Offline'}>
                   &#128222; Audio Call
                 </button>
-                <button className="detail-video-btn" onClick={() => { setIntakeType('video'); setShowIntake(true); }} disabled={astro.callStatus === 'Offline'}>
+                <button className="detail-video-btn" onClick={handleVideoCall} disabled={astro.callStatus === 'Offline'}>
                   &#128249; Video Call
                 </button>
                 <button className="detail-chat-btn" onClick={handleChat} disabled={astro.chatStatus === 'Offline'}>
@@ -365,7 +369,7 @@ const AstrologerDetail = () => {
         <div className="intake-overlay" onClick={() => setShowIntake(false)}>
           <div className="intake-modal" onClick={(e) => e.stopPropagation()}>
             <button className="intake-close" onClick={() => setShowIntake(false)}>&times;</button>
-            <h3>{intakeType === 'chat' ? 'Chat' : 'Call'} with {astro.name}</h3>
+            <h3>{intakeType === 'chat' ? 'Chat' : intakeType === 'video' ? 'Video Call' : 'Audio Call'} with {astro.name}</h3>
             <p className="intake-subtitle">Please fill your details to proceed</p>
 
             <form onSubmit={handleIntakeSubmit}>
@@ -447,7 +451,7 @@ const AstrologerDetail = () => {
               </div>
 
               <button type="submit" className="intake-submit" disabled={submitting}>
-                {submitting ? 'Sending Request...' : `Start ${intakeType === 'chat' ? 'Chat' : 'Call'}`}
+                {submitting ? 'Sending Request...' : `Start ${intakeType === 'chat' ? 'Chat' : intakeType === 'video' ? 'Video Call' : 'Audio Call'}`}
               </button>
             </form>
           </div>
