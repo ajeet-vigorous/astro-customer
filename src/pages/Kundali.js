@@ -440,7 +440,7 @@ const Kundali = () => {
               {activeTab === 'basic' && renderPlanetDetails()}
 
               {/* Download PDF Button */}
-              <div style={{ marginTop: 20, textAlign: 'center' }}>
+              {/* <div style={{ marginTop: 20, textAlign: 'center' }}>
                 <button onClick={async () => {
                   if (!window.confirm('Download detailed Kundali PDF for ₹99?')) return;
                   try {
@@ -457,7 +457,7 @@ const Kundali = () => {
                 }} style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', color: '#fff', border: 'none', padding: '14px 36px', borderRadius: 50, fontSize: '1rem', fontWeight: 600, cursor: 'pointer' }}>
                   📄 Download Full Kundali PDF — ₹99
                 </button>
-              </div>
+              </div>  */}
             </div>
           )}
         </div>
