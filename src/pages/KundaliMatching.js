@@ -92,6 +92,48 @@ const KundaliMatching = () => {
     });
   };
 
+  // Build degree map from planet-details (for chart degree injection)
+  const isRetro = (p) => p?.retro === 1 || p?.retro === '1' || p?.retro === true || p?.isRetro === true || p?.isRetro === 'true';
+  const buildDegreeMap = (report) => {
+    if (!report) return {};
+    const raw = Array.isArray(report) ? report : Object.values(report);
+    const map = {};
+    raw.forEach(p => {
+      if (!p || typeof p !== 'object') return;
+      const code = p.name || p.short_name;
+      if (!code) return;
+      const deg = p.local_degree;
+      if (deg === undefined || deg === null || deg === '') return;
+      const n = parseFloat(deg);
+      if (!Number.isFinite(n)) return;
+      const abs = Math.abs(n);
+      const d = Math.floor(abs);
+      const m = Math.floor((abs - d) * 60);
+      map[code] = `${d}°${String(m).padStart(2, '0')}'${isRetro(p) ? 'R' : ''}`;
+    });
+    return map;
+  };
+
+  // Inject small degree text below each planet label inside SVG
+  const injectDegreesIntoSvg = (svgStr, degreeMap) => {
+    if (!svgStr || typeof svgStr !== 'string') return svgStr;
+    if (!degreeMap || !Object.keys(degreeMap).length) return svgStr;
+    return svgStr.replace(
+      /<text\s+([^>]*?)>\s*([A-Za-z]{2,4})\s*<\/text>/g,
+      (match, attrs, content) => {
+        const planet = content.trim();
+        if (!degreeMap[planet]) return match;
+        const xMatch = attrs.match(/\bx\s*=\s*["']?([-\d.]+)["']?/);
+        const yMatch = attrs.match(/\by\s*=\s*["']?([-\d.]+)["']?/);
+        if (!xMatch || !yMatch) return match;
+        const x = parseFloat(xMatch[1]);
+        const y = parseFloat(yMatch[1]);
+        const degEl = `<text x="${x}" y="${y + 16}" style="font-family:'roboto','Lucida Sans',sans-serif;font-size:13px;fill:#7c3aed;font-weight:600;">${degreeMap[planet]}</text>`;
+        return match + degEl;
+      }
+    );
+  };
+
   const fetchOneChart = async (kundaliId, div, style) => {
     try {
       const res = await kundaliApi.getChartReport({ kundaliId, div, style });
@@ -228,9 +270,10 @@ const KundaliMatching = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Chart card renderer
-  const ChartCard = ({ title, svg, accent }) => {
-    const cleaned = cleanSvg(svg);
+  // Chart card renderer (with optional D1 degree injection)
+  const ChartCard = ({ title, svg, accent, degreeMap }) => {
+    let cleaned = cleanSvg(svg);
+    if (cleaned && degreeMap) cleaned = injectDegreesIntoSvg(cleaned, degreeMap);
     return (
       <div style={{ background: '#fff', border: `1px solid ${accent}33`, borderTop: `3px solid ${accent}`, borderRadius: 12, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
         <div style={{ fontWeight: 700, color: accent, fontSize: '0.85rem', marginBottom: 10, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.5 }}>
@@ -314,7 +357,15 @@ const KundaliMatching = () => {
 
   // ---------------- Result helpers ----------------
   const matchData = result?.recordList || result?.match_report || result?.data || null;
-  const totalReceived = num(matchData?.total?.received_points ?? matchData?.score?.received_points ?? matchData?.received_points);
+  // Score field shape varies by endpoint:
+  //   ashtakoot-with-astro-details: score is a direct number (e.g. 22.5)
+  //   ashtakoot (legacy): score is { received_points, total_points }
+  const totalReceived = num(
+    typeof matchData?.score === 'number' ? matchData.score : null
+    ?? matchData?.total?.received_points
+    ?? matchData?.score?.received_points
+    ?? matchData?.received_points
+  );
   const totalMax = num(matchData?.total?.total_points ?? matchData?.score?.total_points ?? 36, 36);
   const conclusionText = pickStr(
     matchData?.conclusion?.report,
@@ -374,18 +425,22 @@ const KundaliMatching = () => {
     return out;
   })();
 
-  // Manglik dosh extraction
+  // Manglik dosh extraction (handles VedicAstroAPI manglik-dosh response shape)
   const extractManglik = (rpt) => {
     if (!rpt || typeof rpt !== 'object') return null;
+    // Real API: { manglik_by_mars, manglik_by_saturn, manglik_by_rahuketu, factors, aspects, score, bot_response }
     const isManglik =
+      rpt.manglik_by_mars === true || rpt.manglik_by_saturn === true || rpt.manglik_by_rahuketu === true ||
       rpt.is_present === true || rpt.is_present === 'true' ||
       rpt.manglik_present_rule?.is_present === true ||
-      rpt.manglik === true || rpt.is_manglik === true;
+      rpt.manglik === true || rpt.is_manglik === true ||
+      (typeof rpt.score === 'number' && rpt.score > 0);
     const status = pickStr(rpt.manglik_status, rpt.status, rpt.bot_response);
-    const presentRules = rpt.manglik_present_rule?.based_on_rules || rpt.manglik_present_rule?.rules || [];
+    const presentRules = rpt.factors || rpt.manglik_present_rule?.based_on_rules || rpt.manglik_present_rule?.rules || [];
     const cancelRules = rpt.manglik_cancel_rule?.based_on_rules || rpt.manglik_cancel_rule?.rules || [];
-    const percentage = rpt.percentage_manglik_present ?? rpt.manglik_percent;
-    return { isManglik, status, presentRules, cancelRules, percentage };
+    const aspects = rpt.aspects || [];
+    const percentage = rpt.score ?? rpt.percentage_manglik_present ?? rpt.manglik_percent;
+    return { isManglik, status, presentRules, cancelRules, aspects, percentage };
   };
   const boyManglik = extractManglik(result?.boyManaglikRpt || result?.boyManglikRpt || result?.boy_manglik);
   const girlManglik = extractManglik(result?.girlMangalikRpt || result?.girlManglikRpt || result?.girl_manglik);
@@ -540,9 +595,9 @@ const KundaliMatching = () => {
                   </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
-                  <ChartCard title={`👨 ${result.maleKundali?.name || boy.name} — Lagna (D1)`}    svg={boyCharts.D1}  accent="#3b82f6" />
+                  <ChartCard title={`👨 ${result.maleKundali?.name || boy.name} — Lagna (D1)`}    svg={boyCharts.D1}  accent="#3b82f6" degreeMap={buildDegreeMap(result.boyPlanets)} />
                   <ChartCard title={`👨 ${result.maleKundali?.name || boy.name} — Navamsa (D9)`}  svg={boyCharts.D9}  accent="#3b82f6" />
-                  <ChartCard title={`👩 ${result.femaleKundali?.name || girl.name} — Lagna (D1)`}   svg={girlCharts.D1} accent="#ec4899" />
+                  <ChartCard title={`👩 ${result.femaleKundali?.name || girl.name} — Lagna (D1)`}   svg={girlCharts.D1} accent="#ec4899" degreeMap={buildDegreeMap(result.girlPlanets)} />
                   <ChartCard title={`👩 ${result.femaleKundali?.name || girl.name} — Navamsa (D9)`} svg={girlCharts.D9} accent="#ec4899" />
                 </div>
                 <p style={{ fontSize: '0.75rem', color: '#9ca3af', textAlign: 'center', marginTop: 10, fontStyle: 'italic' }}>
@@ -568,6 +623,317 @@ const KundaliMatching = () => {
                 </div>
               </div>
             )}
+
+            {/* Phase C — Quick Match (rapid yes/no compatibility) */}
+            {result.quickMatch && typeof result.quickMatch === 'object' && (() => {
+              const qm = result.quickMatch;
+              const isCompatible = qm.is_compatible === true || qm.compatible === true || qm.match === true || /yes|good|excellent|compatible/i.test(String(qm.verdict || qm.result || qm.match));
+              const score = qm.score ?? qm.compatibility_score ?? qm.percentage;
+              const verdict = qm.verdict || qm.result || qm.match || qm.bot_response || qm.message;
+              const description = qm.description || qm.bot_response;
+              return (
+                <div style={{
+                  background: isCompatible ? 'linear-gradient(135deg, #d1fae5, #a7f3d0)' : 'linear-gradient(135deg, #fee2e2, #fecaca)',
+                  borderRadius: 14, padding: 18, marginBottom: 20,
+                  border: `2px solid ${isCompatible ? '#10b981' : '#dc2626'}`,
+                  display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+                }}>
+                  <div style={{ fontSize: '2.5rem' }}>{isCompatible ? '⚡' : '⚠️'}</div>
+                  <div style={{ flex: '1 1 240px' }}>
+                    <h4 style={{ margin: 0, color: isCompatible ? '#065f46' : '#7f1d1d', fontSize: '1.05rem', fontWeight: 700 }}>
+                      ⚡ Quick Match Result
+                    </h4>
+                    <p style={{ color: isCompatible ? '#047857' : '#991b1b', fontSize: '0.85rem', margin: '4px 0 0' }}>
+                      Fast compatibility check (no full koota analysis)
+                    </p>
+                    {verdict && <p style={{ color: '#1a0533', fontSize: '0.9rem', fontWeight: 600, margin: '8px 0 0' }}>{String(verdict)}</p>}
+                    {description && description !== verdict && <p style={{ color: '#374151', fontSize: '0.82rem', margin: '6px 0 0', lineHeight: 1.5 }}>{String(description)}</p>}
+                  </div>
+                  {(score !== undefined && score !== null) && (
+                    <div style={{ background: '#fff', padding: 14, borderRadius: 12, textAlign: 'center', minWidth: 90, border: `2px solid ${isCompatible ? '#10b981' : '#dc2626'}` }}>
+                      <div style={{ fontSize: '0.65rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5 }}>Score</div>
+                      <div style={{ fontSize: '1.5rem', color: isCompatible ? '#065f46' : '#7f1d1d', fontWeight: 700, marginTop: 2 }}>{score}{typeof score === 'number' && score <= 1 ? '' : (typeof score === 'number' && score > 100 ? '' : '')}</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Phase B — Astro Details Comparison (boy vs girl side-by-side) */}
+            {matchData && (matchData.boy_details || matchData.girl_details || matchData.boy_astro_details || matchData.girl_astro_details) && (() => {
+              const boyD = matchData.boy_details || matchData.boy_astro_details || {};
+              const girlD = matchData.girl_details || matchData.girl_astro_details || {};
+              const pickD = (obj, ...keys) => {
+                for (const k of keys) {
+                  if (obj?.[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+                }
+                return null;
+              };
+              // Field rows: label + boy/girl extractor keys
+              const rows = [
+                { label: 'Rashi (Moon Sign)', keys: ['rashi', 'moon_sign', 'rasi'] },
+                { label: 'Rashi Lord',        keys: ['rashi_lord', 'rasi_lord', 'sign_lord'] },
+                { label: 'Nakshatra',          keys: ['nakshatra', 'star', 'nakshatra_name'] },
+                { label: 'Nakshatra Lord',     keys: ['nakshatra_lord', 'star_lord'] },
+                { label: 'Pada / Charana',     keys: ['nakshatra_pada', 'pada', 'charan', 'charana'] },
+                { label: 'Varna',              keys: ['varna'] },
+                { label: 'Vasya',              keys: ['vasya', 'vashya'] },
+                { label: 'Yoni',               keys: ['yoni'] },
+                { label: 'Gana',               keys: ['gana'] },
+                { label: 'Nadi',               keys: ['nadi'] },
+                { label: 'Tatva',              keys: ['tatva', 'element'] },
+                { label: 'Paya',               keys: ['paya'] },
+                { label: 'Yunja',              keys: ['yunja'] },
+                { label: 'Tithi',              keys: ['tithi'] },
+                { label: 'Karan',              keys: ['karan', 'karana'] },
+                { label: 'Yoga',               keys: ['yoga', 'yog'] },
+              ];
+              // Render only rows where at least one side has data
+              const visibleRows = rows.filter(r => pickD(boyD, ...r.keys) !== null || pickD(girlD, ...r.keys) !== null);
+              if (!visibleRows.length) return null;
+              return (
+                <div style={{ marginBottom: 20 }}>
+                  <h4 style={{ color: '#1a0533', marginBottom: 8, fontSize: '1.05rem' }}>👫 Astro Details Comparison</h4>
+                  <p style={{ color: '#9ca3af', fontSize: '0.78rem', margin: '0 0 12px' }}>
+                    Boy vs Girl — full Vedic astro context (rashi, nakshatra, koota classifications)
+                  </p>
+                  <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #f0e6ff', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: '#7c3aed', color: '#fff' }}>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700 }}>Attribute</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700 }}>👨 {result.maleKundali?.name || boy.name}</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700 }}>👩 {result.femaleKundali?.name || girl.name}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visibleRows.map((r, i) => {
+                          const bv = pickD(boyD, ...r.keys);
+                          const gv = pickD(girlD, ...r.keys);
+                          const sameValue = bv !== null && gv !== null && String(bv).toLowerCase() === String(gv).toLowerCase();
+                          return (
+                            <tr key={i} style={{ background: i % 2 ? '#faf7ff' : '#fff', borderBottom: '1px solid #f0e6ff' }}>
+                              <td style={{ padding: '8px 12px', fontWeight: 600, color: '#6b7280' }}>{r.label}</td>
+                              <td style={{ padding: '8px 12px', color: '#1a0533', fontWeight: sameValue ? 700 : 500, background: sameValue ? '#dcfce7' : 'transparent' }}>
+                                {bv !== null ? String(bv) : <span style={{ color: '#9ca3af' }}>—</span>}
+                              </td>
+                              <td style={{ padding: '8px 12px', color: '#1a0533', fontWeight: sameValue ? 700 : 500, background: sameValue ? '#dcfce7' : 'transparent' }}>
+                                {gv !== null ? String(gv) : <span style={{ color: '#9ca3af' }}>—</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: '#9ca3af', textAlign: 'center', marginTop: 8, fontStyle: 'italic' }}>
+                    💡 Green highlighted rows = same value for both = naturally aligned attribute
+                  </p>
+                </div>
+              );
+            })()}
+
+            {/* Phase A — Aggregate Match (overall verdict) */}
+            {result.aggregateMatch && (() => {
+              const ag = result.aggregateMatch;
+              const score = ag.score ?? ag.match_score ?? ag.received_points ?? ag.total_points;
+              const maxScore = ag.total_points ?? ag.max_score ?? 36;
+              const verdict = ag.verdict || ag.bot_response || ag.message || ag.conclusion || ag.report;
+              const description = ag.description || ag.bot_response;
+              const percentage = ag.percentage || (typeof score === 'number' && typeof maxScore === 'number' ? Math.round((score / maxScore) * 100) : null);
+              return (
+                <div style={{ background: 'linear-gradient(135deg, #fef3c7, #fde68a)', borderRadius: 14, padding: 20, marginBottom: 20, border: '2px solid #f59e0b' }}>
+                  <h4 style={{ color: '#92400e', margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>🎯 Aggregate Match — Final Verdict</h4>
+                  <p style={{ color: '#92400e', fontSize: '0.78rem', margin: '4px 0 12px', opacity: 0.85 }}>Comprehensive overall compatibility combining all factors</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, auto))', gap: 12, marginBottom: verdict || description ? 14 : 0 }}>
+                    {(score !== undefined && score !== null) && (
+                      <div style={{ background: '#fff', padding: 12, borderRadius: 10, textAlign: 'center', border: '1px solid #fde68a' }}>
+                        <div style={{ fontSize: '0.7rem', color: '#92400e', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5 }}>Score</div>
+                        <div style={{ fontSize: '1.6rem', color: '#92400e', fontWeight: 700, marginTop: 2 }}>{score}{maxScore ? ` / ${maxScore}` : ''}</div>
+                      </div>
+                    )}
+                    {percentage !== null && (
+                      <div style={{ background: '#fff', padding: 12, borderRadius: 10, textAlign: 'center', border: '1px solid #fde68a' }}>
+                        <div style={{ fontSize: '0.7rem', color: '#92400e', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5 }}>Compatibility</div>
+                        <div style={{ fontSize: '1.6rem', color: '#92400e', fontWeight: 700, marginTop: 2 }}>{percentage}%</div>
+                      </div>
+                    )}
+                  </div>
+                  {verdict && <div style={{ background: '#fff', padding: '12px 16px', borderRadius: 8, color: '#374151', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: description && description !== verdict ? 8 : 0 }}><strong style={{ color: '#92400e' }}>Verdict:</strong> {String(verdict)}</div>}
+                  {description && description !== verdict && <div style={{ background: '#fff', padding: '12px 16px', borderRadius: 8, color: '#374151', fontSize: '0.85rem', lineHeight: 1.6 }}>{String(description)}</div>}
+                </div>
+              );
+            })()}
+
+            {/* Phase A — Papasamya Match (paap level equality) */}
+            {result.papasamayaMatch && (() => {
+              const pp = result.papasamayaMatch;
+              const boyPapa = pp.boy_papa_count ?? pp.male_papa_count ?? pp.boy_papasamya;
+              const girlPapa = pp.girl_papa_count ?? pp.female_papa_count ?? pp.girl_papasamya;
+              const isMatching = pp.is_matching === true || pp.is_matching === 'true' || pp.match === true || /yes/i.test(String(pp.match));
+              const description = pp.description || pp.bot_response || pp.message || pp.report;
+              return (
+                <div style={{ marginBottom: 20 }}>
+                  <h4 style={{ color: '#1a0533', marginBottom: 8, fontSize: '1.05rem' }}>⚖️ Papasamya Match (Paap Equality)</h4>
+                  <p style={{ color: '#9ca3af', fontSize: '0.78rem', margin: '0 0 12px' }}>Boy aur Girl ke kundali mein paap (malefic effects) ka level barabar hona chahiye for harmony</p>
+                  <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: `2px solid ${isMatching ? '#10b981' : '#f59e0b'}` }}>
+                    <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                      <span style={{
+                        padding: '6px 16px', borderRadius: 50, fontSize: '0.85rem', fontWeight: 700,
+                        background: isMatching ? '#dcfce7' : '#fef3c7',
+                        color: isMatching ? '#166534' : '#92400e',
+                      }}>
+                        {isMatching ? '✓ Papa levels match' : '⚠ Papa levels differ'}
+                      </span>
+                    </div>
+                    {(boyPapa !== undefined || girlPapa !== undefined) && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: description ? 12 : 0 }}>
+                        <div style={{ background: '#eff6ff', padding: 12, borderRadius: 8, textAlign: 'center', border: '1px solid #bfdbfe' }}>
+                          <div style={{ fontSize: '0.72rem', color: '#1e40af', textTransform: 'uppercase', fontWeight: 700 }}>👨 {result.maleKundali?.name || boy.name}</div>
+                          <div style={{ fontSize: '1.6rem', color: '#1e40af', fontWeight: 700, marginTop: 4 }}>{boyPapa ?? '-'}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>papa points</div>
+                        </div>
+                        <div style={{ background: '#fdf2f8', padding: 12, borderRadius: 8, textAlign: 'center', border: '1px solid #fbcfe8' }}>
+                          <div style={{ fontSize: '0.72rem', color: '#9d174d', textTransform: 'uppercase', fontWeight: 700 }}>👩 {result.femaleKundali?.name || girl.name}</div>
+                          <div style={{ fontSize: '1.6rem', color: '#9d174d', fontWeight: 700, marginTop: 4 }}>{girlPapa ?? '-'}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>papa points</div>
+                        </div>
+                      </div>
+                    )}
+                    {description && <div style={{ color: '#374151', fontSize: '0.85rem', lineHeight: 1.6, marginTop: 4 }}>{String(description)}</div>}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Phase A — Rajju & Vedha Details (additional doshas) */}
+            {result.rajjuVedha && (() => {
+              const rv = result.rajjuVedha;
+              const rajju = rv.rajju || rv.rajju_details || rv;
+              const vedha = rv.vedha || rv.vedha_details;
+              const rajjuType = rajju?.type || rajju?.rajju_type || rajju?.name;
+              const rajjuDosha = rajju?.has_dosha === true || rajju?.dosha === true || /yes/i.test(String(rajju?.dosha)) || rajju?.is_present === true;
+              const vedhaPresent = vedha?.is_present === true || /yes/i.test(String(vedha?.has_vedha)) || vedha?.has_vedha === true;
+              const description = rv.description || rv.bot_response || rv.message;
+              return (
+                <div style={{ marginBottom: 20 }}>
+                  <h4 style={{ color: '#1a0533', marginBottom: 8, fontSize: '1.05rem' }}>🪢 Rajju & Vedha Doshas</h4>
+                  <p style={{ color: '#9ca3af', fontSize: '0.78rem', margin: '0 0 12px' }}>8 koots ke alawa hidden doshas — even with high score, these can cause marriage issues if present</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+                    {/* Rajju card */}
+                    <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: `2px solid ${rajjuDosha ? '#dc2626' : '#10b981'}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <strong style={{ color: '#1a0533', fontSize: '0.95rem' }}>Rajju Dosha</strong>
+                        <span style={{
+                          padding: '3px 10px', borderRadius: 50, fontSize: '0.72rem', fontWeight: 700,
+                          background: rajjuDosha ? '#fee2e2' : '#dcfce7',
+                          color: rajjuDosha ? '#b91c1c' : '#166534',
+                        }}>
+                          {rajjuDosha ? '⚠ Present' : '✓ Not Present'}
+                        </span>
+                      </div>
+                      {rajjuType && <div style={{ fontSize: '0.82rem', color: '#374151', marginBottom: 6 }}>Type: <strong>{String(rajjuType)}</strong></div>}
+                      {rajju?.boy_rajju && <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>Boy: {String(rajju.boy_rajju)}</div>}
+                      {rajju?.girl_rajju && <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>Girl: {String(rajju.girl_rajju)}</div>}
+                      {(rajju?.description || rajju?.bot_response) && <div style={{ fontSize: '0.78rem', color: '#374151', marginTop: 8, lineHeight: 1.5 }}>{String(rajju.description || rajju.bot_response)}</div>}
+                    </div>
+                    {/* Vedha card */}
+                    {vedha && (
+                      <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: `2px solid ${vedhaPresent ? '#dc2626' : '#10b981'}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                          <strong style={{ color: '#1a0533', fontSize: '0.95rem' }}>Vedha Dosha</strong>
+                          <span style={{
+                            padding: '3px 10px', borderRadius: 50, fontSize: '0.72rem', fontWeight: 700,
+                            background: vedhaPresent ? '#fee2e2' : '#dcfce7',
+                            color: vedhaPresent ? '#b91c1c' : '#166534',
+                          }}>
+                            {vedhaPresent ? '⚠ Present' : '✓ Not Present'}
+                          </span>
+                        </div>
+                        {vedha?.boy_nakshatra && <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>Boy nakshatra: {String(vedha.boy_nakshatra)}</div>}
+                        {vedha?.girl_nakshatra && <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>Girl nakshatra: {String(vedha.girl_nakshatra)}</div>}
+                        {(vedha?.description || vedha?.bot_response) && <div style={{ fontSize: '0.78rem', color: '#374151', marginTop: 8, lineHeight: 1.5 }}>{String(vedha.description || vedha.bot_response)}</div>}
+                      </div>
+                    )}
+                  </div>
+                  {description && <div style={{ marginTop: 12, padding: '10px 14px', background: '#faf7ff', borderRadius: 8, color: '#374151', fontSize: '0.82rem', lineHeight: 1.5 }}>{String(description)}</div>}
+                </div>
+              );
+            })()}
+
+            {/* Phase C — Western Match (Sun sign + element-based compatibility) */}
+            {result.westernMatch && typeof result.westernMatch === 'object' && (() => {
+              const wm = result.westernMatch;
+              // Try every likely field name + nested object shapes
+              const score = wm.score ?? wm.compatibility_score ?? wm.match_score ?? wm.percentage
+                         ?? wm.compatibility_percent ?? wm.matching_score ?? wm.points ?? wm.received_points
+                         ?? wm.total ?? wm.match;
+              const boySign = wm.boy_sign || wm.male_sign || wm.boy_sun_sign || wm.boy_zodiac
+                           || wm.boy?.sun_sign || wm.boy?.sign || wm.boy?.zodiac || wm.boy_zodiac_sign;
+              const girlSign = wm.girl_sign || wm.female_sign || wm.girl_sun_sign || wm.girl_zodiac
+                            || wm.girl?.sun_sign || wm.girl?.sign || wm.girl?.zodiac || wm.girl_zodiac_sign;
+              const boyElement = wm.boy_element || wm.boy?.element || wm.male_element;
+              const girlElement = wm.girl_element || wm.girl?.element || wm.female_element;
+              const compatibility = wm.compatibility || wm.verdict || wm.bot_response || wm.report || wm.message || wm.conclusion;
+              const description = wm.description || wm.bot_response || wm.predictions;
+              const hasAnyData = score !== undefined || boySign || girlSign || compatibility || description;
+              return (
+                <div style={{ marginBottom: 20 }}>
+                  <h4 style={{ color: '#1a0533', marginBottom: 8, fontSize: '1.05rem' }}>🌍 Western Astrology Match</h4>
+                  <p style={{ color: '#9ca3af', fontSize: '0.78rem', margin: '0 0 12px' }}>Sun sign + element-based compatibility (Tropical zodiac, Western system)</p>
+                  <div style={{ background: '#fff', borderRadius: 12, padding: 16, border: '2px solid #6366f1', borderTop: '4px solid #6366f1' }}>
+                    {hasAnyData ? (
+                      <>
+                        {/* Score banner */}
+                        {(score !== undefined && score !== null) && (
+                          <div style={{ background: '#eef2ff', padding: 12, borderRadius: 10, textAlign: 'center', marginBottom: 14 }}>
+                            <div style={{ fontSize: '0.72rem', color: '#4338ca', textTransform: 'uppercase', fontWeight: 700, letterSpacing: 0.5 }}>Western Compatibility Score</div>
+                            <div style={{ fontSize: '2rem', color: '#4338ca', fontWeight: 700, marginTop: 4 }}>{score}{typeof score === 'number' && score <= 100 && score >= 0 ? '%' : ''}</div>
+                          </div>
+                        )}
+                        {(boySign || girlSign) && (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                            <div style={{ background: '#eff6ff', padding: 12, borderRadius: 8, textAlign: 'center', border: '1px solid #bfdbfe' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#1e40af', textTransform: 'uppercase', fontWeight: 700 }}>👨 {result.maleKundali?.name || boy.name}</div>
+                              <div style={{ fontSize: '1.2rem', color: '#1e40af', fontWeight: 700, marginTop: 4 }}>{boySign || '-'}</div>
+                              {boyElement && <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: 2 }}>{boyElement}</div>}
+                            </div>
+                            <div style={{ background: '#fdf2f8', padding: 12, borderRadius: 8, textAlign: 'center', border: '1px solid #fbcfe8' }}>
+                              <div style={{ fontSize: '0.72rem', color: '#9d174d', textTransform: 'uppercase', fontWeight: 700 }}>👩 {result.femaleKundali?.name || girl.name}</div>
+                              <div style={{ fontSize: '1.2rem', color: '#9d174d', fontWeight: 700, marginTop: 4 }}>{girlSign || '-'}</div>
+                              {girlElement && <div style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: 2 }}>{girlElement}</div>}
+                            </div>
+                          </div>
+                        )}
+                        {compatibility && <div style={{ background: '#faf5ff', padding: '10px 14px', borderRadius: 8, marginBottom: description && description !== compatibility ? 8 : 0 }}>
+                          <strong style={{ color: '#4338ca', fontSize: '0.85rem' }}>Compatibility:</strong>{' '}
+                          <span style={{ color: '#1a0533', fontSize: '0.9rem' }}>{String(compatibility)}</span>
+                        </div>}
+                        {description && description !== compatibility && <div style={{ color: '#374151', fontSize: '0.82rem', lineHeight: 1.5 }}>{String(description)}</div>}
+                      </>
+                    ) : (
+                      <div style={{ background: '#fff8e1', padding: 12, borderRadius: 8, border: '1px solid #fde68a' }}>
+                        <strong style={{ color: '#92400e', fontSize: '0.85rem' }}>Field names unrecognized — showing raw response:</strong>
+                        <pre style={{ fontSize: '0.7rem', background: '#fff', padding: 10, borderRadius: 4, overflowX: 'auto', maxHeight: 300, marginTop: 8, marginBottom: 0 }}>
+                          {JSON.stringify(wm, null, 2)}
+                        </pre>
+                        <p style={{ fontSize: '0.7rem', color: '#92400e', marginTop: 8, marginBottom: 0, fontStyle: 'italic' }}>
+                          📋 Iss raw JSON ko mujhe bhejo — exact field names map kar dunga.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Always-visible debug toggle — for verifying field structure */}
+                    <details style={{ marginTop: 12 }}>
+                      <summary style={{ cursor: 'pointer', color: '#6366f1', fontSize: '0.75rem', fontWeight: 600 }}>🔍 Show raw API data (debug)</summary>
+                      <pre style={{ background: '#0f172a', color: '#e2e8f0', padding: 12, borderRadius: 8, fontSize: '0.7rem', overflowX: 'auto', maxHeight: 280, marginTop: 8, fontFamily: "'SF Mono', Monaco, 'Courier New', monospace" }}>
+                        {JSON.stringify(wm, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Manglik */}
             {(boyManglik || girlManglik) && (

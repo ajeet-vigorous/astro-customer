@@ -144,6 +144,28 @@ export const kundaliApi = {
   getPanchang: (data) => API.post('/customer/get/panchang', data),
   geocode: (data) => API.post('/customer/geocode', data),
   placeAutocomplete: (data) => API.post('/customer/place-autocomplete', data),
+  // Phase 1 — Basic tab
+  getBirthPanchang: (data) => API.post('/customer/kundali/birth-panchang', data),
+  getAvakhadaDetails: (data) => API.post('/customer/kundali/avakhada', data),
+  // Phase 3 — Transit chart + planet positions
+  getTransitChart: (data) => API.post('/customer/kundali/transit-chart', data),
+  getTransitPlanets: (data) => API.post('/customer/kundali/transit-planets', data),
+  // Phase 4 — Vimshottari Mahadasha
+  getMahadashaList: (data) => API.post('/customer/kundali/mahadasha', data),
+  // Phase 5 — Yogini Dasha
+  getYoginiDashaList: (data) => API.post('/customer/kundali/yogini-dasha', data),
+  // Phase 6 — Ashtakvarga full (sav + 8 binnas)
+  getAshtakvargaFull: (data) => API.post('/customer/kundali/ashtakvarga-full', data),
+  // Phase 9 — KP System
+  getKpFull: (data) => API.post('/customer/kundali/kp-full', data),
+  // Phase 10 — Sade Sati
+  getSadeSati: (data) => API.post('/customer/kundali/sade-sati', data),
+  // Phase 11 — Shadbala
+  getShadbala: (data) => API.post('/customer/kundali/shadbala', data),
+  // Phase 12 — Bhav Bala
+  getBhavBala: (data) => API.post('/customer/kundali/bhav-bala', data),
+  // Phase 13 — Manglik
+  getManglikDosh: (data) => API.post('/customer/kundali/manglik', data),
 };
 
 // Blog
