@@ -1,7 +1,7 @@
 // Agora provider adapter. Uses agora-rtc-sdk-ng.
 // sdkConfig shape: { appId, channel, token, uid, scenario }
 
-export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo, onStats }) {
+export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo, onStats, onAudioBlocked }) {
   const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
   const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
 
@@ -42,7 +42,25 @@ export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo
         remoteUser.videoTrack.play(remoteEl);
       }
       if (mediaType === 'audio' && remoteUser.audioTrack) {
-        remoteUser.audioTrack.play();
+        // Agora's internal audio play can be blocked by mobile autoplay policy.
+        // If it rejects, surface a retry function so CallRoom can show "Tap to enable
+        // audio" overlay — user's tap on the overlay is a fresh gesture that unblocks.
+        try {
+          const playRes = remoteUser.audioTrack.play();
+          if (playRes && typeof playRes.catch === 'function') {
+            playRes.catch((err) => {
+              console.warn('[agora] remote audio autoplay blocked:', err?.message);
+              if (typeof onAudioBlocked === 'function') {
+                onAudioBlocked(() => remoteUser.audioTrack.play());
+              }
+            });
+          }
+        } catch (err) {
+          console.warn('[agora] remote audio play threw:', err?.message);
+          if (typeof onAudioBlocked === 'function') {
+            onAudioBlocked(() => remoteUser.audioTrack.play());
+          }
+        }
       }
     } catch (e) { console.error('Agora subscribe failed:', e); }
   });

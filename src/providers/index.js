@@ -13,7 +13,7 @@
 //   .toggleMic(bool)     → mute/unmute local audio
 //   .toggleCamera(bool)  → mute/unmute local video
 
-export async function createCallSession({ tokenResponse, localEl, remoteEl, isVideo, onStats }) {
+export async function createCallSession({ tokenResponse, localEl, remoteEl, isVideo, onStats, onAudioBlocked }) {
   const provider = (tokenResponse?.provider || '').toLowerCase();
   const sdkConfig = tokenResponse?.sdkConfig;
   if (!sdkConfig) throw new Error('Backend did not return sdkConfig');
@@ -21,7 +21,7 @@ export async function createCallSession({ tokenResponse, localEl, remoteEl, isVi
   switch (provider) {
     case 'agora': {
       const { createAgoraSession } = await import('./agoraProvider');
-      return createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo, onStats });
+      return createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo, onStats, onAudioBlocked });
     }
     case 'zego': {
       const { createZegoSession } = await import('./zegoProvider');

@@ -26,15 +26,49 @@ const CallRoom = () => {
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const [connStatus, setConnStatus] = useState('connected'); // connected | reconnecting | peer_lost
   const [connMessage, setConnMessage] = useState('');
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const timerRef = useRef(null);
   const heartbeatRef = useRef(null);
   const callIdRef = useRef(null);
   const tokenRefreshRef = useRef(null);
   const metricsBufferRef = useRef([]);
   const metricsFlushRef = useRef(null);
+  const audioRetryRef = useRef(null);
 
   useEffect(() => {
     if (!callId || !user) return;
+
+    // Pre-unlock browser AudioContext on the first user tap during the pending screen.
+    // Mobile browsers (Chrome Android, Safari iOS) block remote audio playback if the
+    // play() call happens too long after the original user gesture. Customer's "Call"
+    // tap on the previous page is already stale by the time astrologer accepts and
+    // audio publishes. We capture any tap on the call page and prime the audio system
+    // with a silent buffer — invisible to the user, but unlocks autoplay for the
+    // remote astrologer audio when it arrives via Agora's user-published event.
+    const unlockAudio = () => {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (Ctx) {
+          const ctx = new Ctx();
+          const buf = ctx.createBuffer(1, 1, 22050);
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(ctx.destination);
+          src.start(0);
+          if (ctx.state === 'suspended') ctx.resume();
+        }
+        // Also unlock the <audio id="remote-stream"> element by triggering a tiny play
+        const remoteAudioEl = document.getElementById('remote-stream');
+        if (remoteAudioEl && typeof remoteAudioEl.play === 'function') {
+          remoteAudioEl.play().catch(() => {});
+        }
+        console.log('[audio] AudioContext pre-unlocked via user tap');
+      } catch (e) {
+        console.warn('[audio] unlock attempt failed:', e?.message);
+      }
+    };
+    document.addEventListener('touchstart', unlockAudio, { once: true, passive: true });
+    document.addEventListener('click', unlockAudio, { once: true });
 
     // Connect socket
     const token = localStorage.getItem('customerToken');
@@ -134,6 +168,8 @@ const CallRoom = () => {
     });
 
     return () => {
+      document.removeEventListener('touchstart', unlockAudio);
+      document.removeEventListener('click', unlockAudio);
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (tokenRefreshRef.current) { clearInterval(tokenRefreshRef.current); tokenRefreshRef.current = null; }
       if (metricsFlushRef.current) { clearInterval(metricsFlushRef.current); metricsFlushRef.current = null; }
@@ -161,6 +197,12 @@ const CallRoom = () => {
         remoteEl,
         isVideo,
         onStats: (ev) => { metricsBufferRef.current.push({ ...ev, ts: Date.now() }); },
+        // Mobile autoplay block fallback — provider calls this with a retry function
+        // when remote audio play() rejects. We surface "Tap to enable audio" overlay.
+        onAudioBlocked: (retryFn) => {
+          audioRetryRef.current = retryFn;
+          setAudioBlocked(true);
+        },
       });
 
       timerRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
@@ -243,6 +285,21 @@ const CallRoom = () => {
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
+  const handleEnableAudio = async () => {
+    const retry = audioRetryRef.current;
+    if (!retry) { setAudioBlocked(false); return; }
+    try {
+      const r = retry();
+      if (r && typeof r.then === 'function') await r;
+      setAudioBlocked(false);
+      audioRetryRef.current = null;
+    } catch (e) {
+      console.error('[audio] retry play still blocked:', e?.message);
+      // Keep overlay visible so user can tap again
+      toast.error('Audio still blocked. Try tapping again or unmute device.');
+    }
+  };
+
   const handleSubmitRating = async () => {
     if (!callData) { navigate('/call-history'); return; }
     setRatingSubmitting(true);
@@ -300,6 +357,43 @@ const CallRoom = () => {
               {connStatus === 'reconnecting' ? '🔄' : '⚠️'}
             </span>
             {connMessage || (connStatus === 'reconnecting' ? 'Reconnecting...' : 'Connection issue')}
+          </div>
+        )}
+
+        {/* Audio autoplay-block fallback overlay — fires only if pre-unlock didn't work
+            and the browser silently blocked Agora's remote audio. User taps once
+            (fresh gesture) to unblock and audio resumes. */}
+        {audioBlocked && status === 'Accepted' && (
+          <div
+            onClick={handleEnableAudio}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 1000,
+              background: 'rgba(0,0,0,0.75)',
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', padding: 20, textAlign: 'center',
+            }}
+          >
+            <div style={{
+              fontSize: 60, marginBottom: 16, animation: 'pulse 1.5s ease-in-out infinite',
+            }}>🔊</div>
+            <h2 style={{ color: '#fff', fontSize: '1.4rem', fontWeight: 700, marginBottom: 12 }}>
+              Tap to enable audio
+            </h2>
+            <p style={{ color: '#e2e8f0', fontSize: '0.95rem', maxWidth: 320, marginBottom: 24 }}>
+              Aapke browser ne audio block kiya hai. Astrologer ki awaaz sunne ke liye screen par tap karo.
+            </p>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleEnableAudio(); }}
+              style={{
+                background: '#7c3aed', color: '#fff', border: 'none',
+                padding: '14px 36px', borderRadius: 50,
+                fontSize: '1rem', fontWeight: 700, cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(124,58,237,0.4)',
+              }}
+            >
+              🎧 Enable Audio
+            </button>
           </div>
         )}
 
