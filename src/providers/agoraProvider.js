@@ -5,6 +5,20 @@ export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo
   const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
   const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
 
+  // Official Agora pattern for mobile-browser autoplay block.
+  // SDK's IRemoteAudioTrack.play() returns void (NOT a Promise) — try/catching the
+  // call won't catch autoplay rejections. Instead Agora exposes a global callback
+  // AgoraRTC.onAutoplayFailed that fires once when any track's autoplay is blocked.
+  // After the user makes ANY gesture on the page (e.g. tapping our overlay), the
+  // SDK auto-resumes all blocked audio internally — no need to call play() again.
+  if (typeof onAudioBlocked === 'function') {
+    AgoraRTC.onAutoplayFailed = () => {
+      console.warn('[agora] autoplay blocked — surfacing overlay for user gesture');
+      // Pass a no-op retry — SDK handles resume internally on next user interaction
+      onAudioBlocked(() => {});
+    };
+  }
+
   await client.join(sdkConfig.appId, sdkConfig.channel, sdkConfig.token, sdkConfig.uid || 0);
 
   // Network quality samples — Agora fires every ~2s. uplink/downlink: 1=excellent..6=down.
@@ -42,25 +56,9 @@ export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo
         remoteUser.videoTrack.play(remoteEl);
       }
       if (mediaType === 'audio' && remoteUser.audioTrack) {
-        // Agora's internal audio play can be blocked by mobile autoplay policy.
-        // If it rejects, surface a retry function so CallRoom can show "Tap to enable
-        // audio" overlay — user's tap on the overlay is a fresh gesture that unblocks.
-        try {
-          const playRes = remoteUser.audioTrack.play();
-          if (playRes && typeof playRes.catch === 'function') {
-            playRes.catch((err) => {
-              console.warn('[agora] remote audio autoplay blocked:', err?.message);
-              if (typeof onAudioBlocked === 'function') {
-                onAudioBlocked(() => remoteUser.audioTrack.play());
-              }
-            });
-          }
-        } catch (err) {
-          console.warn('[agora] remote audio play threw:', err?.message);
-          if (typeof onAudioBlocked === 'function') {
-            onAudioBlocked(() => remoteUser.audioTrack.play());
-          }
-        }
+        // Agora's IRemoteAudioTrack.play() returns void — autoplay-block reporting
+        // happens via the global AgoraRTC.onAutoplayFailed callback (wired above).
+        remoteUser.audioTrack.play();
       }
     } catch (e) { console.error('Agora subscribe failed:', e); }
   });
