@@ -1,11 +1,31 @@
 // Agora provider adapter. Uses agora-rtc-sdk-ng.
 // sdkConfig shape: { appId, channel, token, uid, scenario }
 
-export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo }) {
+export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo, onStats }) {
   const AgoraRTC = (await import('agora-rtc-sdk-ng')).default;
   const client = AgoraRTC.createClient({ mode: 'rtc', codec: 'vp8' });
 
   await client.join(sdkConfig.appId, sdkConfig.channel, sdkConfig.token, sdkConfig.uid || 0);
+
+  // Network quality samples — Agora fires every ~2s. uplink/downlink: 1=excellent..6=down.
+  // We report the worse of the two as the call's effective quality.
+  let statsInterval = null;
+  if (typeof onStats === 'function') {
+    client.on('network-quality', (q) => {
+      const worst = Math.max(q.uplinkNetworkQuality || 0, q.downlinkNetworkQuality || 0);
+      if (worst > 0) onStats({ eventType: 'network_quality', value: worst });
+    });
+    // Sample bitrate + packet-loss every 10s via getRTCStats
+    statsInterval = setInterval(() => {
+      try {
+        const s = client.getRTCStats();
+        if (s) {
+          const bitrate = Math.round(((s.RecvBitrate || 0) + (s.SendBitrate || 0)) / 1000);
+          if (bitrate > 0) onStats({ eventType: 'bitrate_kbps', value: bitrate });
+        }
+      } catch (_) {}
+    }, 10000);
+  }
 
   const localAudio = await AgoraRTC.createMicrophoneAudioTrack();
   let localVideo = null;
@@ -30,6 +50,7 @@ export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo
   return {
     provider: 'agora',
     async leave() {
+      if (statsInterval) { clearInterval(statsInterval); statsInterval = null; }
       try { localAudio?.stop(); localAudio?.close(); } catch (e) {}
       try { localVideo?.stop(); localVideo?.close(); } catch (e) {}
       try { await client.leave(); } catch (e) {}
@@ -39,6 +60,10 @@ export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo
     },
     async toggleCamera(enabled) {
       try { await localVideo?.setEnabled(enabled); } catch (e) {}
+    },
+    // Renew RTC token mid-call without disconnecting (for long sessions >1hr)
+    async renewToken(newToken) {
+      try { await client.renewToken(newToken); } catch (e) { console.error('Agora renewToken failed:', e); throw e; }
     },
   };
 }

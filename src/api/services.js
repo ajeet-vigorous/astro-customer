@@ -64,6 +64,7 @@ export const callApi = {
   cancelCall: (data) => API.post('/customer/callRequest/cancel', data),
   getCallById: (data) => API.post('/customer/getCallById', data),
   getCallHistory: (data) => API.post('/customer/getCallHistory', data),
+  postMetrics: (data) => API.post('/customer/call/metrics', data),
 };
 
 // Wallet & Payment

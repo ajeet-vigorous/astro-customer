@@ -55,5 +55,11 @@ export async function createHmsSession({ sdkConfig, localEl, remoteEl, isVideo }
     async toggleCamera(enabled) {
       try { await actions.setLocalVideoEnabled(enabled); } catch (e) {}
     },
+    // HMS auth tokens have 24-hour validity by default — refresh rarely needed.
+    // For very long sessions (>20 hours), the calling code can request a new
+    // token and join again — but mid-call renewal is not supported by the SDK.
+    async renewToken(newToken) {
+      console.log('[HMS] Token renewal not supported mid-call (auth tokens valid 24hr+ by default)');
+    },
   };
 }

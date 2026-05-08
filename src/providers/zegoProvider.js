@@ -54,5 +54,9 @@ export async function createZegoSession({ sdkConfig, localEl, remoteEl, isVideo 
     async toggleCamera(enabled) {
       try { zg.mutePublishStreamVideo(localStream, !enabled); } catch (e) {}
     },
+    // Renew Zego token mid-call (for long sessions >1hr)
+    async renewToken(newToken) {
+      try { await zg.renewToken(sdkConfig.roomID, newToken); } catch (e) { console.error('Zego renewToken failed:', e); throw e; }
+    },
   };
 }

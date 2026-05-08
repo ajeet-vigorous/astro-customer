@@ -24,7 +24,14 @@ const CallRoom = () => {
   const [rating, setRating] = useState(5);
   const [ratingText, setRatingText] = useState('');
   const [ratingSubmitting, setRatingSubmitting] = useState(false);
+  const [connStatus, setConnStatus] = useState('connected'); // connected | reconnecting | peer_lost
+  const [connMessage, setConnMessage] = useState('');
   const timerRef = useRef(null);
+  const heartbeatRef = useRef(null);
+  const callIdRef = useRef(null);
+  const tokenRefreshRef = useRef(null);
+  const metricsBufferRef = useRef([]);
+  const metricsFlushRef = useRef(null);
 
   useEffect(() => {
     if (!callId || !user) return;
@@ -36,6 +43,46 @@ const CallRoom = () => {
 
     socket.on('connect', () => {
       socket.emit('join-call', { callId: parseInt(callId) });
+      // On reconnect during active call, refresh heartbeat so server marks us alive immediately
+      if (callIdRef.current) {
+        socket.emit('call-heartbeat', { callId: callIdRef.current });
+        setConnStatus('connected');
+        setConnMessage('');
+      }
+    });
+
+    // Local socket lost — show "Reconnecting..." overlay (Socket.io auto-retries in background)
+    socket.on('disconnect', () => {
+      if (callIdRef.current) {
+        setConnStatus('reconnecting');
+        setConnMessage('Connection lost — reconnecting...');
+      }
+    });
+    socket.io.on('reconnect_attempt', () => {
+      if (callIdRef.current) {
+        setConnStatus('reconnecting');
+        setConnMessage('Reconnecting to call...');
+      }
+    });
+    socket.io.on('reconnect', () => {
+      if (callIdRef.current) {
+        setConnStatus('connected');
+        setConnMessage('');
+        toast.success('Reconnected');
+      }
+    });
+
+    // Peer (astrologer) disconnected — show overlay, but don't end call (heartbeat handles 30s timeout)
+    socket.on('peer-connection-lost', (data) => {
+      const sideLabel = data.disconnectedSide === 'astrologer' ? 'Astrologer' : 'Other side';
+      setConnStatus('peer_lost');
+      setConnMessage(`${sideLabel} disconnected. Waiting up to ${data.reconnectTimeout || 30}s for reconnect...`);
+    });
+    socket.on('peer-reconnected', (data) => {
+      setConnStatus('connected');
+      setConnMessage('');
+      const sideLabel = data.reconnectedSide === 'astrologer' ? 'Astrologer' : 'Other side';
+      toast.success(`${sideLabel} reconnected`);
     });
 
     // Fetch call details
@@ -87,6 +134,9 @@ const CallRoom = () => {
     });
 
     return () => {
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+      if (tokenRefreshRef.current) { clearInterval(tokenRefreshRef.current); tokenRefreshRef.current = null; }
+      if (metricsFlushRef.current) { clearInterval(metricsFlushRef.current); metricsFlushRef.current = null; }
       socket.disconnect();
       stopCall();
       if (timerRef.current) clearInterval(timerRef.current);
@@ -110,9 +160,54 @@ const CallRoom = () => {
         localEl,
         remoteEl,
         isVideo,
+        onStats: (ev) => { metricsBufferRef.current.push({ ...ev, ts: Date.now() }); },
       });
 
       timerRef.current = setInterval(() => setTimer(prev => prev + 1), 1000);
+
+      // Drop-detection: emit heartbeat every 10s. Server auto-ends call if no heartbeat
+      // from this side for 30s+ (handles browser crash, network drop, app force-close).
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+      const cid = parseInt(callId);
+      callIdRef.current = cid; // remember active callId for reconnect handlers
+      const sock = socketRef.current;
+      if (sock) sock.emit('call-heartbeat', { callId: cid }); // immediate first ping
+      heartbeatRef.current = setInterval(() => {
+        if (socketRef.current && socketRef.current.connected) {
+          socketRef.current.emit('call-heartbeat', { callId: cid });
+        }
+      }, 10000);
+
+      // Quality metrics — flush buffered provider stats every 30s in a batch
+      if (metricsFlushRef.current) clearInterval(metricsFlushRef.current);
+      metricsFlushRef.current = setInterval(() => {
+        const buf = metricsBufferRef.current;
+        if (!buf.length) return;
+        const events = buf.splice(0, buf.length);
+        callApi.postMetrics({ callId: cid, events }).catch(() => {});
+      }, 30000);
+
+      // Token refresh for long calls (>1hr). Backend issues 4-hour tokens; we refresh
+      // every 50 minutes so a fresh token is in place well before any expiry boundary.
+      // HMS provider's renewToken is a no-op (HMS auth tokens valid 24hr+).
+      if (tokenRefreshRef.current) clearInterval(tokenRefreshRef.current);
+      tokenRefreshRef.current = setInterval(async () => {
+        try {
+          const refreshRes = await callApi.getZegoToken({ callId: cid, userId: user.id });
+          if (refreshRes.data?.status !== 200) return;
+          const newToken =
+            refreshRes.data?.sdkConfig?.token ||
+            refreshRes.data?.sdkConfig?.authToken ||
+            refreshRes.data?.token;
+          if (newToken && sessionRef.current?.renewToken) {
+            await sessionRef.current.renewToken(newToken);
+            console.log('[token] Refreshed for long call');
+          }
+        } catch (e) {
+          console.error('[token] Refresh failed:', e);
+        }
+      }, 50 * 60 * 1000);
+
       console.log('Call connected via', sessionRef.current.provider);
     } catch (err) {
       console.error('Call error:', err);
@@ -121,6 +216,18 @@ const CallRoom = () => {
   };
 
   const stopCall = async () => {
+    if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
+    if (tokenRefreshRef.current) { clearInterval(tokenRefreshRef.current); tokenRefreshRef.current = null; }
+    if (metricsFlushRef.current) {
+      clearInterval(metricsFlushRef.current); metricsFlushRef.current = null;
+      // Final flush of any leftover events
+      const buf = metricsBufferRef.current;
+      if (buf.length && callIdRef.current) {
+        const events = buf.splice(0, buf.length);
+        callApi.postMetrics({ callId: callIdRef.current, events }).catch(() => {});
+      }
+    }
+    callIdRef.current = null;
     const session = sessionRef.current;
     sessionRef.current = null;
     if (session) {
@@ -177,6 +284,22 @@ const CallRoom = () => {
                 navigate('/talk-to-astrologer');
               } catch(e) { toast.error('Failed to cancel'); }
             }}>Cancel Call</button>
+          </div>
+        )}
+
+        {/* Reconnection overlay (during active call only) */}
+        {status === 'Accepted' && connStatus !== 'connected' && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, zIndex: 999,
+            background: connStatus === 'reconnecting' ? '#f59e0b' : '#dc2626',
+            color: '#fff', padding: '10px 16px', textAlign: 'center',
+            fontWeight: 600, fontSize: '0.9rem',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          }}>
+            <span style={{ marginRight: 8 }}>
+              {connStatus === 'reconnecting' ? '🔄' : '⚠️'}
+            </span>
+            {connMessage || (connStatus === 'reconnecting' ? 'Reconnecting...' : 'Connection issue')}
           </div>
         )}
 
