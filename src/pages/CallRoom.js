@@ -72,7 +72,7 @@ const CallRoom = () => {
 
     // Connect socket
     const token = localStorage.getItem('customerToken');
-    const socket = io(API_URL, { auth: { token } });
+    const socket = io(API_URL, { auth: { token }, transports: ['websocket'] });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -167,7 +167,30 @@ const CallRoom = () => {
       toast.error(data.message || 'Call error');
     });
 
+    // Fallback for missed socket events (flaky networks / ngrok): poll call status while
+    // Pending so the customer still connects once the astrologer accepts, even if the
+    // `call-accepted` socket event was never delivered to this tab.
+    const acceptPoll = setInterval(async () => {
+      if (sessionRef.current) { clearInterval(acceptPoll); return; }
+      try {
+        const r = await callApi.getCallById({ callId });
+        const c = r.data?.recordList || r.data;
+        if (c?.callStatus === 'Accepted') {
+          clearInterval(acceptPoll);
+          setStatus('Accepted');
+          setCallData(prev => ({ ...prev, ...c }));
+          startCall(c);
+        } else if (c?.callStatus === 'Rejected') {
+          clearInterval(acceptPoll);
+          setStatus('Rejected');
+        } else if (['Completed', 'Cancelled'].includes(c?.callStatus)) {
+          clearInterval(acceptPoll);
+        }
+      } catch (_) {}
+    }, 3000);
+
     return () => {
+      clearInterval(acceptPoll);
       document.removeEventListener('touchstart', unlockAudio);
       document.removeEventListener('click', unlockAudio);
       if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
@@ -181,6 +204,7 @@ const CallRoom = () => {
 
   // Start call — provider-agnostic via adapter (picks agora / zego / hms based on backend response)
   const startCall = async (data) => {
+    if (sessionRef.current) return; // already joined — avoid duplicate (socket + poll race)
     try {
       const tokenRes = await callApi.getZegoToken({ callId: parseInt(callId), userId: user.id });
       if (tokenRes.data?.status !== 200) { toast.error('Failed to get call token'); return; }

@@ -1,38 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
+import { getAuthConfig, sendFirebaseOtp, verifyFirebaseOtp } from '../api/firebaseAuth';
 import './Login.css';
 
+// Login page — supports both providers via runtime server-side switch:
+//   provider='msg91'    → server sends SMS, server verifies OTP
+//   provider='firebase' → frontend uses Firebase SDK to send/verify OTP,
+//                         server only verifies the resulting Firebase ID token
+//
+// Admin can switch providers without redeploy by toggling systemflag 'OtpProvider'.
 const Login = () => {
   const [step, setStep] = useState(1); // 1=phone, 2=otp
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [serverOtp, setServerOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [provider, setProvider] = useState('msg91'); // resolved from server
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // Resolve which OTP provider is active on the server, on mount.
+  useEffect(() => {
+    getAuthConfig().then(cfg => {
+      setProvider(cfg.provider || 'msg91');
+    }).catch(() => setProvider('msg91'));
+  }, []);
+
   const handleSendOtp = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!phone || phone.length < 10) {
       toast.error('Please enter a valid phone number');
       return;
     }
     setLoading(true);
     try {
-      const res = await authApi.sendOtp({ contactNo: phone, fromApp: 'user', type: 'login' });
-      if (res.data?.status === 200) {
-        // Dev mode: server returns OTP in response
-        if (res.data?.otp) setServerOtp(res.data.otp);
-        toast.success(res.data?.message || 'OTP sent successfully');
+      if (provider === 'firebase') {
+        // Firebase path: send SMS via Firebase Web SDK + invisible reCAPTCHA
+        await sendFirebaseOtp(`+91${phone}`);
+        toast.success('OTP sent to your phone via Firebase');
         setStep(2);
       } else {
-        toast.error(res.data?.message || 'Failed to send OTP');
+        // MSG91 / dev path: server sends OTP
+        const res = await authApi.sendOtp({ contactNo: phone, fromApp: 'user', type: 'login' });
+        if (res.data?.status === 200) {
+          if (res.data?.otp) setServerOtp(res.data.otp); // dev-only OTP echo
+          toast.success(res.data?.message || 'OTP sent successfully');
+          setStep(2);
+        } else {
+          toast.error(res.data?.message || 'Failed to send OTP');
+        }
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to send OTP');
+      const msg = err.response?.data?.message || err.message || 'Failed to send OTP';
+      toast.error(msg);
     }
     setLoading(false);
   };
@@ -43,15 +66,18 @@ const Login = () => {
       toast.error('Please enter a valid OTP');
       return;
     }
-    // Verify OTP locally (dev mode - server returns OTP in sendOtp response)
-    if (serverOtp && otp !== String(serverOtp)) {
-      toast.error('Invalid OTP');
-      return;
-    }
     setLoading(true);
     try {
-      // loginAppUser: auto-registers if user doesn't exist
-      const res = await authApi.login({ contactNo: phone });
+      let res;
+      if (provider === 'firebase') {
+        // Firebase verifies OTP client-side and returns an ID token.
+        // We send that token to server which validates with firebase-admin.
+        const idToken = await verifyFirebaseOtp(otp);
+        res = await authApi.verifyFirebaseAndLogin({ idToken });
+      } else {
+        // MSG91 / dev: server verifies OTP
+        res = await authApi.verifyOtpAndLogin({ contactNo: phone, otp });
+      }
       const d = res.data;
       if (d?.token) {
         login(d.token, d.recordList || d.user || d);
@@ -61,7 +87,8 @@ const Login = () => {
         toast.error(d?.message || 'Login failed');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong');
+      const msg = err.response?.data?.message || err.message || 'Invalid OTP';
+      toast.error(msg);
     }
     setLoading(false);
   };
@@ -103,6 +130,8 @@ const Login = () => {
             </div>
           </form>
         )}
+        {/* Invisible reCAPTCHA mount point for Firebase (no UI shown when invisible) */}
+        <div id="recaptcha-container" />
       </div>
     </div>
   );

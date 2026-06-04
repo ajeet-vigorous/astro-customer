@@ -15,8 +15,11 @@ export const homeApi = {
 
 // Auth
 export const authApi = {
-  login: (data) => API.post('/customer/loginAppUser', data),
-  sendOtp: (data) => API.post('/customer/checkContactNoExistForUser', data),
+  login: (data) => API.post('/customer/loginAppUser', data),  // legacy, no OTP
+  sendOtp: (data) => API.post('/customer/checkContactNoExistForUser', data),  // MSG91 path: server sends SMS
+  verifyOtpAndLogin: (data) => API.post('/customer/verifyOtpAndLogin', data),  // MSG91 path: verify + login
+  verifyFirebaseAndLogin: (data) => API.post('/customer/verifyFirebaseAndLogin', data),  // Firebase path: verify ID token + login
+  getAuthConfig: () => API.get('/customer/authConfig'),  // server tells which provider is active
   getProfile: (data) => API.post('/customer/getProfile', data),
   updateProfile: (data) => API.post('/customer/user/updateProfile', data),
   logout: () => API.post('/customer/logout'),
@@ -115,6 +118,14 @@ export const aiChatApi = {
   getById: (data) => API.post('/customer/getAiAstrologerById', data),
   sendMessage: (data) => API.post('/customer/sendAiMessage', data),
   getHistory: (data) => API.post('/customer/getAiChatHistory', data),
+};
+
+// Waitlist (queue) — production-grade single-queue-per-customer
+export const waitlistApi = {
+  join: (data) => API.post('/customer/waitlist/join', data),
+  leave: (data) => API.post('/customer/waitlist/leave', data || {}),
+  myStatus: () => API.post('/customer/waitlist/myStatus'),
+  forAstrologer: (data) => API.post('/customer/waitlist/forAstrologer', data),
 };
 
 // Horoscope

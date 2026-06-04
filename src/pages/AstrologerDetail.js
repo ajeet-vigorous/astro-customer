@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { astrologerApi, chatApi, callApi, walletApi, giftApi, reportApi, blockAstrologerApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
@@ -17,6 +17,7 @@ const DURATION_OPTIONS = [
 
 const AstrologerDetail = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const [astro, setAstro] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -127,13 +128,62 @@ const AstrologerDetail = () => {
     setFollowLoading(false);
   };
 
+  // When customer is auto-redirected from WaitingQueue (?fromQueue=1&action=call|chat|video),
+  // open the intake modal automatically so they can start the session immediately.
+  useEffect(() => {
+    if (!astro) return;
+    if (searchParams.get('fromQueue') !== '1') return;
+    const action = searchParams.get('action');
+    if (!action) return;
+    // Small delay to let astrologer status refresh (just became Online from Busy)
+    const t = setTimeout(() => {
+      openIntakeModal(action);
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [astro, searchParams]);
+
   const openIntakeModal = (type) => {
     if (!user) { toast.error('Please login first'); navigate('/login'); return; }
     const statusField = type === 'chat' ? astro.chatStatus : astro.callStatus;
     if (statusField === 'Offline') { toast.error('Astrologer is currently offline'); return; }
-    if (statusField === 'Busy') { toast.error('Astrologer is currently busy'); return; }
+    // Busy → offer Join Queue instead of rejecting
+    if (statusField === 'Busy') {
+      if (window.confirm(`${astro.name} is currently in another call. Would you like to join the waiting queue?`)) {
+        joinWaitingQueue(type);
+      }
+      return;
+    }
     setIntakeType(type);
     setShowIntake(true);
+  };
+
+  // Queue join — single-queue-per-customer model. Backend validates wallet.
+  const joinWaitingQueue = async (type) => {
+    try {
+      const { waitlistApi } = await import('../api/services');
+      const requestType = type === 'chat' ? 'Chat' : type === 'video' ? 'Video' : 'Audio';
+      const res = await waitlistApi.join({
+        astrologerId: parseInt(id),
+        requestType,
+        userName: user?.name,
+        profile: user?.profile,
+      });
+      const d = res.data;
+      if (d?.status === 200) {
+        toast.success(`Joined queue at position #${d.position} (~${d.eta} min wait)`);
+        navigate(`/waiting/${id}`);
+      } else {
+        toast.error(d?.message || 'Could not join queue');
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Could not join queue';
+      if (err.response?.data?.walletShortfall) {
+        if (window.confirm(`${msg}\n\nRecharge wallet now?`)) navigate('/wallet');
+      } else {
+        toast.error(msg);
+      }
+    }
   };
 
   const handleIntakeChange = (e) => {

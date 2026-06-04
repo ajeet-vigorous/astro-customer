@@ -11,6 +11,7 @@
     "agora-extension-ai-denoiser": "^2.0.2",
     "agora-rtc-sdk-ng": "^4.24.3",
     "axios": "^1.13.6",
+    "firebase": "^12.13.0",
     "localforage": "^1.10.0",
     "long": "^5.3.2",
     "protobufjs": "^8.0.0",

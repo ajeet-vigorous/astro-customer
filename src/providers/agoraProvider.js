@@ -59,48 +59,11 @@ export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo
     }, 10000);
   }
 
-  // ── Noise cancellation: 2-layer stack ──────────────────────────────────────
-  // Layer 1 (always): browser-level 3A — AEC (echo), AGC (gain), ANS (noise).
-  //   Free, built into WebRTC, supported on every browser. ~95% quality boost
-  //   over mic-raw input.
-  // Layer 2 (if loadable): Agora AI Denoiser extension — deep-learning model
-  //   that removes keyboard/fan/traffic noise. Ships as separate npm + 5.7 MB
-  //   WASM (served from /public/agora-ai-denoiser/). Falls back to Layer 1 if
-  //   load/init fails (older browsers, missing WASM, plan restrictions).
-  let denoiser = null;
-  let denoiserProcessor = null;
-  try {
-    const { AIDenoiserExtension } = await import('agora-extension-ai-denoiser');
-    const ext = new AIDenoiserExtension({ assetsPath: '/agora-ai-denoiser' });
-    if (ext.checkCompatibility()) {
-      AgoraRTC.registerExtensions([ext]);
-      denoiser = ext;
-    } else {
-      console.warn('[agora] AINS not compatible with this browser — using browser 3A only');
-    }
-  } catch (e) {
-    console.warn('[agora] AINS extension load failed, using browser 3A only:', e?.message);
-  }
-
-  const localAudio = await AgoraRTC.createMicrophoneAudioTrack({
-    AEC: true,
-    AGC: true,
-    ANS: true,
-    encoderConfig: 'speech_standard',
-  });
-
-  // If AINS loaded, pipe local audio through the denoiser before publishing
-  if (denoiser) {
-    try {
-      denoiserProcessor = denoiser.createProcessor();
-      localAudio.pipe(denoiserProcessor).pipe(localAudio.processorDestination);
-      await denoiserProcessor.enable();
-      console.log('[agora] AI Noise Suppression active (AINS)');
-    } catch (e) {
-      console.warn('[agora] AINS processor setup failed, falling back to 3A only:', e?.message);
-      denoiserProcessor = null;
-    }
-  }
+  // Default mic — Agora SDK ke browser-level 3A (AEC/AGC/ANS) by default ON hote
+  // hain modern browsers me. Custom encoderConfig hata diya (mobile compat issues).
+  // AINS extension temporarily disabled — pipe-on-fail bug audio break kar raha tha.
+  // Stable hone ke baad AINS proper unpipe-on-error ke saath wapas laayenge.
+  const localAudio = await AgoraRTC.createMicrophoneAudioTrack();
 
   let localVideo = null;
   if (isVideo) {
@@ -113,11 +76,6 @@ export async function createAgoraSession({ sdkConfig, localEl, remoteEl, isVideo
     provider: 'agora',
     async leave() {
       if (statsInterval) { clearInterval(statsInterval); statsInterval = null; }
-      if (denoiserProcessor) {
-        try { await denoiserProcessor.disable(); } catch (_) {}
-        try { await denoiserProcessor.destroy(); } catch (_) {}
-        denoiserProcessor = null;
-      }
       try { localAudio?.stop(); localAudio?.close(); } catch (e) {}
       try { localVideo?.stop(); localVideo?.close(); } catch (e) {}
       try { await client.leave(); } catch (e) {}
