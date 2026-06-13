@@ -76,6 +76,7 @@ export const walletApi = {
   paymentSuccess: (data) => API.post('/customer/paymentSuccess', data),
   getBalance: () => API.post('/customer/getWalletBalance'),
   getTransactions: (params) => API.post('/customer/getWalletTransactions', params),
+  getRechargeHistory: (params) => API.post('/customer/getRechargeHistory', params),
   getRechargeAmount: () => API.post('/customer/getRechargeAmount'),
   getPaymentConfig: () => API.post('/customer/getPaymentConfig'),
   razorpayCreateOrder: (data) => API.post('/customer/razorpay/createOrder', data),

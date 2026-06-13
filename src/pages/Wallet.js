@@ -19,6 +19,8 @@ const Wallet = () => {
   const [showCouponList, setShowCouponList] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState(null);
   const [selectedCashback, setSelectedCashback] = useState(0);
+  const [rechargeHistory, setRechargeHistory] = useState([]);
+  const [expandedRecharge, setExpandedRecharge] = useState(null);
 
   useEffect(() => {
     fetchWalletData();
@@ -36,12 +38,13 @@ const Wallet = () => {
   const fetchWalletData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [balanceRes, rechargeRes, txnRes, configRes, couponRes] = await Promise.allSettled([
+      const [balanceRes, rechargeRes, txnRes, configRes, couponRes, rechargeHistRes] = await Promise.allSettled([
         walletApi.getBalance(),
         walletApi.getRechargeAmount(),
         walletApi.getTransactions({ startIndex: 0, fetchRecord: 50 }),
         walletApi.getPaymentConfig(),
         couponApi.getAll({ startIndex: 0, fetchRecord: 100 }),
+        walletApi.getRechargeHistory({ startIndex: 0, fetchRecord: 50 }),
       ]);
 
       if (balanceRes.status === 'fulfilled') {
@@ -64,6 +67,10 @@ const Wallet = () => {
       if (couponRes.status === 'fulfilled') {
         const list = couponRes.value.data?.recordList || [];
         setAvailableCoupons(Array.isArray(list) ? list : []);
+      }
+      if (rechargeHistRes.status === 'fulfilled') {
+        const list = rechargeHistRes.value.data?.recordList || [];
+        setRechargeHistory(Array.isArray(list) ? list : []);
       }
     } catch (err) { console.error(err); }
     setLoading(false);
@@ -441,6 +448,51 @@ const Wallet = () => {
               {recharging ? 'Processing...' : `Pay \u20B9${totalPayable.toFixed(2)}`}
             </button>
           </div>
+        )}
+
+        {rechargeHistory.length > 0 && (
+          <>
+            <h3 className="wallet-subtitle">Recharge History</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {rechargeHistory.map((r, i) => {
+                const isOpen = expandedRecharge === i;
+                const statusColor = r.status === 'success' ? '#16a34a' : r.status === 'failed' ? '#dc2626' : '#d97706';
+                const statusLabel = r.status === 'success' ? 'Success' : r.status === 'failed' ? 'Failed' : 'Pending';
+                const brow = { display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', margin: '5px 0' };
+                return (
+                  <div key={r.id || i} style={{ border: '1px solid #e0d4f5', borderRadius: 12, overflow: 'hidden', background: '#fff' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', cursor: 'pointer' }}
+                      onClick={() => setExpandedRecharge(isOpen ? null : i)}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#1a0533' }}>&#8377;{r.amount.toFixed(2)}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                          {r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ background: statusColor + '22', color: statusColor, padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700 }}>{statusLabel}</span>
+                        <span style={{ color: '#7c3aed', fontSize: '0.8rem' }}>{isOpen ? 'Hide' : 'View'}</span>
+                      </div>
+                    </div>
+                    {isOpen && (
+                      <div style={{ background: '#faf7ff', padding: 14, borderTop: '1px solid #e0d4f5' }}>
+                        <div style={brow}><span>Recharge Amount</span><span>&#8377;{r.amount.toFixed(2)}</span></div>
+                        {r.cashback > 0 && <div style={{ ...brow, color: '#16a34a' }}><span>Bonus (Cashback)</span><span>+ &#8377;{r.cashback.toFixed(2)}</span></div>}
+                        {r.gstPercent > 0 && <div style={{ ...brow, color: '#6b7280' }}><span>GST ({r.gstPercent}%)</span><span>+ &#8377;{r.gstAmount.toFixed(2)}</span></div>}
+                        <hr style={{ border: 'none', borderTop: '1px dashed #c4b5fd', margin: '8px 0' }} />
+                        <div style={{ ...brow, fontWeight: 700, color: '#1a0533' }}><span>Total Paid</span><span>&#8377;{r.totalPaid.toFixed(2)}</span></div>
+                        <div style={{ ...brow, fontWeight: 700, color: '#16a34a' }}><span>Wallet Credit</span><span>&#8377;{r.walletCredit.toFixed(2)}</span></div>
+                        <hr style={{ border: 'none', borderTop: '1px dashed #c4b5fd', margin: '8px 0' }} />
+                        <div style={brow}><span>Transaction ID</span><span style={{ wordBreak: 'break-all', textAlign: 'right' }}>{r.transactionId}</span></div>
+                        <div style={brow}><span>Payment Mode</span><span style={{ textTransform: 'capitalize' }}>{r.paymentMode || '-'}</span></div>
+                        <div style={brow}><span>Status</span><span style={{ color: statusColor, fontWeight: 700 }}>{statusLabel}</span></div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {transactions.length > 0 && (
