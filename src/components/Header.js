@@ -69,6 +69,7 @@ const Header = () => {
                   <Link to="/orders">My Orders</Link>
                   <Link to="/chat-history">My Chats</Link>
                   <Link to="/call-history">My Calls</Link>
+                  <Link to="/my-remedies">My Remedies</Link>
                   <Link to="/following">My Following</Link>
                   <Link to="/recommended-pujas">Recommended Pujas</Link>
                   <Link to="/refer-earn">Refer & Earn</Link>

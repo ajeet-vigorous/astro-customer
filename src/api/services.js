@@ -34,6 +34,7 @@ export const astrologerApi = {
   addReview: (data) => API.post('/customer/userReview/add', data),
   follow: (data) => API.post('/customer/follower/add', data),
   getFollowing: (data) => API.post('/customer/getFollower', data),
+  getGallery: (data) => API.post('/customer/getAstrologerGallery', data),
 };
 
 // Block Astrologer
@@ -95,6 +96,11 @@ export const referralApi = {
 // Report
 export const reportApi = {
   addReport: (data) => API.post('/customer/userReport/add', data),
+};
+
+// Remedies suggested by astrologers
+export const remedyApi = {
+  myRemedies: (data) => API.post('/customer/myRemedies', data || {}),
 };
 
 // Astro Features

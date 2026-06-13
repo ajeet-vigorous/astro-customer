@@ -20,6 +20,7 @@ const AstrologerDetail = () => {
   const [searchParams] = useSearchParams();
   const [astro, setAstro] = useState(null);
   const [reviews, setReviews] = useState([]);
+  const [gallery, setGallery] = useState([]);
   const [loading, setLoading] = useState(true);
   const [reviewText, setReviewText] = useState('');
   const [rating, setRating] = useState(5);
@@ -64,11 +65,12 @@ const AstrologerDetail = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [astroRes, revRes, followRes, blockRes] = await Promise.allSettled([
+      const [astroRes, revRes, followRes, blockRes, galleryRes] = await Promise.allSettled([
         astrologerApi.getById({ astrologerId: id }),
         astrologerApi.getReviews({ astrologerId: id }),
         user ? astrologerApi.getFollowing({ userId: user.id }) : Promise.resolve(null),
         user ? blockAstrologerApi.check({ astrologerId: id }) : Promise.resolve(null),
+        astrologerApi.getGallery({ astrologerId: id }),
       ]);
       if (astroRes.status === 'fulfilled') {
         const d = astroRes.value.data?.data || astroRes.value.data;
@@ -86,6 +88,10 @@ const AstrologerDetail = () => {
       }
       if (blockRes.status === 'fulfilled' && blockRes.value) {
         setIsBlocked(!!blockRes.value.data?.isBlocked);
+      }
+      if (galleryRes.status === 'fulfilled') {
+        const d = galleryRes.value.data?.recordList || [];
+        setGallery(Array.isArray(d) ? d : []);
       }
     } catch (err) {
       console.error(err);
@@ -374,6 +380,22 @@ const AstrologerDetail = () => {
                   <span key={i} className="expertise-tag">{typeof s === 'object' ? s.name : String(s).trim()}</span>
                 ));
               })()}
+            </div>
+          </section>
+        )}
+
+        {gallery.length > 0 && (
+          <section className="detail-section">
+            <h3>Gallery</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 10 }}>
+              {gallery.map(g => {
+                const src = g.image?.startsWith('http') ? g.image : `http://localhost:5000/${(g.image || '').replace(/^\//, '')}`;
+                return (
+                  <a key={g.id} href={src} target="_blank" rel="noreferrer" style={{ display: 'block', borderRadius: 10, overflow: 'hidden', border: '1px solid #e0d4f5', aspectRatio: '1', background: '#faf7ff' }}>
+                    <img src={src} alt="gallery" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </a>
+                );
+              })}
             </div>
           </section>
         )}
