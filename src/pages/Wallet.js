@@ -270,6 +270,14 @@ const Wallet = () => {
 
   if (loading) return <div className="home-loading"><div className="spinner"></div><p>Loading...</p></div>;
 
+  // GST is added on top of the chosen amount; wallet still gets the full chosen amount.
+  const gstPercent = parseFloat(paymentConfig?.gstPercent || 0);
+  const baseAmount = selectedAmount || 0;
+  const couponDiscount = appliedCoupon ? parseFloat(appliedCoupon.discount) : 0;
+  const gstAmount = baseAmount * gstPercent / 100;
+  const totalPayable = baseAmount + gstAmount;          // what the customer pays at the gateway
+  const walletCredit = baseAmount + selectedCashback + couponDiscount; // what lands in the wallet
+
   return (
     <div className="account-page">
       <div className="container">
@@ -391,8 +399,8 @@ const Wallet = () => {
           <div className="recharge-summary" style={{ marginTop: 20, padding: 16, border: '1px solid #e0d4f5', borderRadius: 12, background: '#faf7ff' }}>
             <h4 style={{ margin: '0 0 12px', color: '#1a0533' }}>Recharge Summary</h4>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-              <span>Pay Amount</span>
-              <strong>&#8377;{selectedAmount.toFixed(2)}</strong>
+              <span>Recharge Amount</span>
+              <strong>&#8377;{baseAmount.toFixed(2)}</strong>
             </div>
             {selectedCashback > 0 && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#16a34a' }}>
@@ -403,13 +411,23 @@ const Wallet = () => {
             {appliedCoupon && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#16a34a' }}>
                 <span>Coupon ({appliedCoupon.couponCode})</span>
-                <span>+ &#8377;{parseFloat(appliedCoupon.discount).toFixed(2)}</span>
+                <span>+ &#8377;{couponDiscount.toFixed(2)}</span>
+              </div>
+            )}
+            {gstPercent > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: '#6b7280' }}>
+                <span>GST ({gstPercent}%)</span>
+                <span>+ &#8377;{gstAmount.toFixed(2)}</span>
               </div>
             )}
             <hr style={{ border: 'none', borderTop: '1px dashed #c4b5fd', margin: '10px 0' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 700, color: '#1a0533' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 700, color: '#1a0533', marginBottom: 6 }}>
+              <span>Total Payable</span>
+              <span>&#8377;{totalPayable.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#16a34a', fontWeight: 600 }}>
               <span>Wallet Credit</span>
-              <span>&#8377;{(selectedAmount + selectedCashback + (appliedCoupon ? parseFloat(appliedCoupon.discount) : 0)).toFixed(2)}</span>
+              <span>&#8377;{walletCredit.toFixed(2)}</span>
             </div>
             <button
               onClick={handleRecharge}
@@ -420,7 +438,7 @@ const Wallet = () => {
                 cursor: recharging ? 'not-allowed' : 'pointer', opacity: recharging ? 0.6 : 1
               }}
             >
-              {recharging ? 'Processing...' : `Recharge \u20B9${selectedAmount.toFixed(0)}`}
+              {recharging ? 'Processing...' : `Pay \u20B9${totalPayable.toFixed(2)}`}
             </button>
           </div>
         )}
