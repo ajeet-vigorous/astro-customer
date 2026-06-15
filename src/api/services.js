@@ -11,6 +11,8 @@ export const homeApi = {
   getStories: () => API.post('/astro/getStory'),
   getLiveAstrologers: () => API.post('/astro/liveAstrologer/get'),
   getPujaCategories: () => API.post('/customer/getPujaCategory'),
+  getAdsVideos: () => API.post('/customer/getAdsVideo'),
+  getTrainingVideos: () => API.post('/customer/getTrainingVideo', { type: 'user' }),
 };
 
 // Auth

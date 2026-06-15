@@ -290,7 +290,7 @@ const AstrologerDetail = () => {
   if (loading) return <div className="home-loading"><div className="spinner"></div><p>Loading...</p></div>;
   if (!astro) return <div className="no-data">Astrologer not found</div>;
 
-  const imgSrc = astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `http://localhost:5000${astro.profileImage}`) : '/default-avatar.png';
+  const imgSrc = astro.profileImage ? (astro.profileImage.startsWith('http') ? astro.profileImage : `http://localhost:5000/${astro.profileImage.replace(/^\//, '')}`) : '/default-avatar.png';
   const charge = parseFloat(astro.charge || 0);
 
   return (
@@ -308,7 +308,7 @@ const AstrologerDetail = () => {
               <h2>{astro.name}</h2>
               <p className="detail-skill">{Array.isArray(astro.primarySkill) ? astro.primarySkill.map(s => s.name).join(', ') : (astro.primarySkill || astro.skill || '-')}</p>
               <p className="detail-lang">{Array.isArray(astro.languageKnown) ? astro.languageKnown.map(l => l.languageName || l.name).join(', ') : (astro.languageKnown || astro.language || '')}</p>
-              <p className="detail-exp">{astro.experience ? `${astro.experience} years experience` : ''}</p>
+              <p className="detail-exp">{(astro.experienceInYears || astro.experience) ? `${astro.experienceInYears || astro.experience} years experience` : ''}</p>
               <div className="detail-rating">
                 <span className="star">&#9733;</span>
                 <span>{astro.rating || '4.5'}</span>
@@ -380,6 +380,138 @@ const AstrologerDetail = () => {
                   <span key={i} className="expertise-tag">{typeof s === 'object' ? s.name : String(s).trim()}</span>
                 ));
               })()}
+            </div>
+          </section>
+        )}
+
+        {/* Quick info cards */}
+        <section className="detail-section">
+          <h3>Profile</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+            {[
+              { label: 'Experience', value: (astro.experienceInYears || astro.experience) ? `${astro.experienceInYears || astro.experience} yrs` : '-' },
+              { label: 'Gender', value: astro.gender || '-' },
+              { label: 'City', value: astro.currentCity || '-' },
+              { label: 'Country', value: astro.country || '-' },
+              { label: 'Total Orders', value: astro.totalOrder ?? '-' },
+              { label: 'Available Hrs/day', value: astro.dailyContribution ? `${astro.dailyContribution} hrs` : '-' },
+              { label: 'Verified', value: astro.isVerified ? '✅ Yes' : 'No' },
+              { label: 'Languages', value: Array.isArray(astro.languageKnown) ? astro.languageKnown.map(l => l.languageName || l.name).join(', ') : (astro.languageKnown || '-') },
+              {
+                label: 'Chat Status',
+                value: (() => { const st = astro.chatStatus || '-'; const c = st === 'Online' ? '#16a34a' : st === 'Busy' ? '#d97706' : '#9ca3af'; return <span style={{ color: c }}>{st !== '-' && '● '}{st}</span>; })(),
+              },
+              {
+                label: 'Call Status',
+                value: (() => { const st = astro.callStatus || '-'; const c = st === 'Online' ? '#16a34a' : st === 'Busy' ? '#d97706' : '#9ca3af'; return <span style={{ color: c }}>{st !== '-' && '● '}{st}</span>; })(),
+              },
+            ].map((it, i) => (
+              <div key={i} style={{ background: '#faf7ff', border: '1px solid #e0d4f5', borderRadius: 10, padding: '12px 14px' }}>
+                <div style={{ fontSize: '0.72rem', color: '#9333ea', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.3 }}>{it.label}</div>
+                <div style={{ fontSize: '0.95rem', color: '#1a0533', marginTop: 4, fontWeight: 600 }}>{it.value}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Consultation charges */}
+        <section className="detail-section">
+          <h3>Consultation Charges</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12 }}>
+            {[
+              { label: 'Chat / Audio Call', value: `₹${parseFloat(astro.charge || 0)}/min` },
+              { label: 'Video Call', value: astro.videoCallRate ? `₹${parseFloat(astro.videoCallRate)}/min` : '-' },
+              { label: 'Report', value: astro.reportRate ? `₹${parseFloat(astro.reportRate)}` : '-' },
+            ].map((it, i) => (
+              <div key={i} style={{ background: '#fff', border: '1px solid #e0d4f5', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.78rem', color: '#6b7280', fontWeight: 600 }}>{it.label}</div>
+                <div style={{ fontSize: '1.1rem', color: '#16a34a', marginTop: 4, fontWeight: 700 }}>{it.value}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Categories */}
+        {Array.isArray(astro.astrologerCategoryId) && astro.astrologerCategoryId.length > 0 && (
+          <section className="detail-section">
+            <h3>Categories</h3>
+            <div className="expertise-tags">
+              {astro.astrologerCategoryId.map((c, i) => (
+                <span key={i} className="expertise-tag">{typeof c === 'object' ? c.name : c}</span>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* About the astrologer */}
+        {(astro.loginBio || astro.whyOnBoard || astro.goodQuality || astro.biggestChallenge || astro.whatwillDo) && (
+          <section className="detail-section">
+            <h3>About {astro.name}</h3>
+            {astro.loginBio && <p style={{ marginBottom: 12 }}>{astro.loginBio}</p>}
+            {[
+              { q: 'Why I joined', a: astro.whyOnBoard },
+              { q: 'My strengths', a: astro.goodQuality },
+              { q: 'Biggest challenge I solve', a: astro.biggestChallenge },
+              { q: 'How I help', a: astro.whatwillDo },
+            ].filter(x => x.a).map((x, i) => (
+              <div key={i} style={{ marginBottom: 10 }}>
+                <div style={{ fontWeight: 700, color: '#7c3aed', fontSize: '0.9rem' }}>{x.q}</div>
+                <div style={{ color: '#374151', fontSize: '0.92rem' }}>{x.a}</div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {/* Education */}
+        {(astro.degree || astro.college || astro.learnAstrology) && (
+          <section className="detail-section">
+            <h3>Education</h3>
+            {astro.degree && <p style={{ margin: '4px 0' }}><strong>Degree:</strong> {astro.degree}</p>}
+            {astro.college && <p style={{ margin: '4px 0' }}><strong>College:</strong> {astro.college}</p>}
+            {astro.learnAstrology && <p style={{ margin: '4px 0' }}><strong>Formally learnt astrology:</strong> {astro.learnAstrology}</p>}
+          </section>
+        )}
+
+        {/* Social links */}
+        {(astro.instaProfileLink || astro.facebookProfileLink || astro.linkedInProfileLink || astro.youtubeChannelLink || astro.websiteProfileLink) && (
+          <section className="detail-section">
+            <h3>Connect</h3>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+              {[
+                { label: 'Instagram', url: astro.instaProfileLink },
+                { label: 'Facebook', url: astro.facebookProfileLink },
+                { label: 'LinkedIn', url: astro.linkedInProfileLink },
+                { label: 'YouTube', url: astro.youtubeChannelLink },
+                { label: 'Website', url: astro.websiteProfileLink },
+              ].filter(s => s.url).map((s, i) => (
+                <a key={i} href={s.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', background: '#faf7ff', border: '1px solid #e0d4f5', color: '#7c3aed', padding: '8px 16px', borderRadius: 20, fontWeight: 600, fontSize: '0.85rem' }}>
+                  {s.label} ↗
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Availability */}
+        {Array.isArray(astro.astrologerAvailability) && astro.astrologerAvailability.length > 0 && (
+          <section className="detail-section">
+            <h3>Availability</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+              {astro.astrologerAvailability.map((d, i) => {
+                const slots = (d.time || []).filter(t => t.fromTime && t.toTime);
+                const available = slots.length > 0;
+                return (
+                  <div key={i} style={{ background: available ? '#faf7ff' : '#f9fafb', border: `1px solid ${available ? '#e0d4f5' : '#e5e7eb'}`, borderRadius: 10, padding: '10px 14px' }}>
+                    <div style={{ fontWeight: 700, color: '#1a0533', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>{d.day}</span>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: available ? '#16a34a' : '#9ca3af' }}>{available ? '● Open' : 'Closed'}</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: 2 }}>
+                      {available ? slots.map((t) => `${t.fromTime} - ${t.toTime}`).join(', ') : 'Not available'}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}

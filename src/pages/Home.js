@@ -3,6 +3,12 @@ import { Link } from 'react-router-dom';
 import { homeApi, horoscopeApi, blogApi, productApi, pujaApi } from '../api/services';
 import './Home.css';
 
+// Extract the 11-char YouTube video id from any YouTube URL form.
+const ytId = (url) => {
+  const m = (url || '').match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/);
+  return m ? m[1] : '';
+};
+
 const Home = () => {
   const [banners, setBanners] = useState([]);
   const [astrologers, setAstrologers] = useState([]);
@@ -11,12 +17,14 @@ const Home = () => {
   const [products, setProducts] = useState([]);
   const [pujaCategories, setPujaCategories] = useState([]);
   const [recommendedPujas, setRecommendedPujas] = useState([]);
+  const [adsVideos, setAdsVideos] = useState([]);
+  const [trainingVideos, setTrainingVideos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [bannersRes, astroRes, horoRes, blogRes, prodRes, pujaRes, recPujaRes] = await Promise.allSettled([
+        const [bannersRes, astroRes, horoRes, blogRes, prodRes, pujaRes, recPujaRes, adsVidRes, trainVidRes] = await Promise.allSettled([
           homeApi.getBanners(),
           homeApi.getAstrologers({ startIndex: 0, fetchRecord: 8 }),
           horoscopeApi.getSigns(),
@@ -24,6 +32,8 @@ const Home = () => {
           productApi.getProducts({}),
           pujaApi.getCategories(),
           pujaApi.getRecommended(),
+          homeApi.getAdsVideos(),
+          homeApi.getTrainingVideos(),
         ]);
 
         if (bannersRes.status === 'fulfilled') {
@@ -53,6 +63,14 @@ const Home = () => {
         }
         if (recPujaRes?.status === 'fulfilled') {
           setRecommendedPujas(recPujaRes.value.data?.recordList || []);
+        }
+        if (adsVidRes?.status === 'fulfilled') {
+          const d = adsVidRes.value.data?.recordList || adsVidRes.value.data?.data || [];
+          setAdsVideos(Array.isArray(d) ? d : []);
+        }
+        if (trainVidRes?.status === 'fulfilled') {
+          const d = trainVidRes.value.data?.recordList || trainVidRes.value.data?.data || [];
+          setTrainingVideos(Array.isArray(d) ? d : []);
         }
       } catch (err) {
         console.error('Error loading home data:', err);
@@ -228,6 +246,74 @@ const Home = () => {
       )}
 
       {/* Blogs */}
+      {adsVideos.length > 0 && (
+        <section className="section">
+          <div className="container">
+            <div className="section-header">
+              <h3 className="section-title">celebration Videos</h3>
+            </div>
+            <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 }}>
+              {adsVideos.map((v) => {
+                const id = ytId(v.youtubeLink);
+                if (!id) return null;
+                return (
+                  <div key={v.id} style={{ flex: '0 0 300px', maxWidth: 300, borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.08)' }}>
+                    <div style={{ position: 'relative', paddingTop: '56.25%' }}>
+                      <iframe
+                        src={`https://www.youtube.com/embed/${id}`}
+                        title={v.videoTitle || 'Astrology video'}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+                      />
+                    </div>
+                    {v.videoTitle && (
+                      <div style={{ padding: 12, fontSize: '0.88rem', fontWeight: 600, color: '#1a0533', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {v.videoTitle}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {trainingVideos.length > 0 && (
+        <section className="section">
+          <div className="container">
+            <div className="section-header">
+              <h3 className="section-title">Training Video</h3>
+            </div>
+            <div style={{ display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8 }}>
+              {trainingVideos.map((v) => {
+                const id = ytId(v.video_link);
+                if (!id) return null;
+                return (
+                  <div key={v.id} style={{ flex: '0 0 300px', maxWidth: 300, borderRadius: 12, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.08)' }}>
+                    <div style={{ position: 'relative', paddingTop: '56.25%' }}>
+                      <iframe
+                        src={`https://www.youtube.com/embed/${id}`}
+                        title={v.title || 'Training video'}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+                      />
+                    </div>
+                    {v.title && (
+                      <div style={{ padding: 12, fontSize: '0.88rem', fontWeight: 600, color: '#1a0533', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {v.title}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
       {blogs.length > 0 && (
         <section className="section blog-section">
           <div className="container">
