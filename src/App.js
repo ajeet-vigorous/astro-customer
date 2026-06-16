@@ -25,6 +25,7 @@ import PujaDetail from './pages/PujaDetail';
 import Profile from './pages/Profile';
 import Wallet from './pages/Wallet';
 import MyRemedies from './pages/MyRemedies';
+import Feedback from './pages/Feedback';
 import Orders from './pages/Orders';
 import ChatHistory from './pages/ChatHistory';
 import CallHistory from './pages/CallHistory';
@@ -92,6 +93,7 @@ function App() {
             <Route path="/wallet" element={<ProfileGuard><Wallet /></ProfileGuard>} />
             <Route path="/orders" element={<ProfileGuard><Orders /></ProfileGuard>} />
             <Route path="/my-remedies" element={<ProfileGuard><MyRemedies /></ProfileGuard>} />
+            <Route path="/feedback" element={<ProfileGuard><Feedback /></ProfileGuard>} />
             <Route path="/chat-history" element={<ProfileGuard><ChatHistory /></ProfileGuard>} />
             <Route path="/call-history" element={<ProfileGuard><CallHistory /></ProfileGuard>} />
             <Route path="/chat-room/:chatId" element={<ProfileGuard><ChatRoom /></ProfileGuard>} />

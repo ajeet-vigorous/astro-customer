@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { astrologerApi, chatApi, callApi, walletApi, giftApi, reportApi, blockAstrologerApi } from '../api/services';
+import { astrologerApi, chatApi, callApi, walletApi, giftApi, reportApi, blockAstrologerApi, assistantChatApi } from '../api/services';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import './AstrologerDetail.css';
@@ -30,6 +30,9 @@ const AstrologerDetail = () => {
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockLoading, setBlockLoading] = useState(false);
   const [showGifts, setShowGifts] = useState(false);
+  const [asstChat, setAsstChat] = useState(null);      // { chatId } when assistant chat open
+  const [asstMessages, setAsstMessages] = useState([]);
+  const [asstText, setAsstText] = useState('');
   const [gifts, setGifts] = useState([]);
   const [sendingGift, setSendingGift] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -97,6 +100,46 @@ const AstrologerDetail = () => {
       console.error(err);
     }
     setLoading(false);
+  };
+
+  // Open a chat with the astrologer's assistant (used when astrologer is busy/offline)
+  const openAssistantChat = async () => {
+    if (!user) { toast.error('Please login first'); navigate('/login'); return; }
+    try {
+      const res = await assistantChatApi.getChatId({ senderId: user.id, receiverId: id, astrologerId: id, customerId: user.id });
+      const chatId = res.data?.recordList;
+      if (!chatId) { toast.error('Could not start assistant chat'); return; }
+      setAsstChat({ chatId });
+      setAsstMessages([]);
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Could not start assistant chat');
+    }
+  };
+
+  // Poll assistant chat messages while the chat is open
+  useEffect(() => {
+    if (!asstChat?.chatId) return;
+    let active = true;
+    const load = async () => {
+      try {
+        const res = await assistantChatApi.getMessages({ chatId: asstChat.chatId });
+        if (active) setAsstMessages(res.data?.recordList || []);
+      } catch (e) { /* silent */ }
+    };
+    load();
+    const t = setInterval(load, 3000);
+    return () => { active = false; clearInterval(t); };
+  }, [asstChat]);
+
+  const sendAssistantMessage = async () => {
+    const msg = asstText.trim();
+    if (!msg || !asstChat?.chatId) return;
+    setAsstText('');
+    try {
+      await assistantChatApi.sendMessage({ chatId: asstChat.chatId, senderId: user.id, senderType: 'customer', message: msg });
+      const res = await assistantChatApi.getMessages({ chatId: asstChat.chatId });
+      setAsstMessages(res.data?.recordList || []);
+    } catch (e) { toast.error('Failed to send'); setAsstText(msg); }
   };
 
   const handleBlock = async () => {
@@ -325,6 +368,11 @@ const AstrologerDetail = () => {
                 <button className="detail-chat-btn" onClick={handleChat} disabled={astro.chatStatus === 'Offline'}>
                   &#128172; Chat Now
                 </button>
+                {astro.chatStatus !== 'Online' && (
+                  <button className="detail-chat-btn" onClick={openAssistantChat} style={{ background: '#0ea5e9' }}>
+                    &#129302; Chat with Assistant
+                  </button>
+                )}
                 <button className={`detail-follow-btn ${isFollowing ? 'following' : ''}`} onClick={handleFollow} disabled={followLoading}>
                   {followLoading ? '...' : isFollowing ? '&#10003; Following' : '+ Follow'}
                 </button>
@@ -728,6 +776,39 @@ const AstrologerDetail = () => {
               ))}
             </div>
             {gifts.length === 0 && <p style={{ textAlign: 'center', color: '#9ca3af', padding: 20 }}>No gifts available</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Assistant chat */}
+      {asstChat && (
+        <div onClick={() => setAsstChat(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1100 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: '16px 16px 0 0', width: '100%', maxWidth: 480, height: '70vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 16px', background: 'linear-gradient(135deg, #0284c7, #0ea5e9)', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 700 }}>🤖 {astro.name}'s Assistant</div>
+                <div style={{ fontSize: '0.72rem', opacity: 0.9 }}>An assistant will reply on the astrologer's behalf</div>
+              </div>
+              <button onClick={() => setAsstChat(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: 22, cursor: 'pointer' }}>&times;</button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 14, background: '#f5f3fb' }}>
+              {asstMessages.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#9ca3af', padding: 24 }}>Start the conversation 👋</div>
+              ) : asstMessages.map(m => {
+                const mine = m.senderType === 'customer';
+                return (
+                  <div key={m.id} style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start', marginBottom: 8 }}>
+                    <div style={{ maxWidth: '75%', padding: '8px 12px', borderRadius: 12, fontSize: '0.9rem', wordBreak: 'break-word', background: mine ? '#0ea5e9' : '#fff', color: mine ? '#fff' : '#1f2937', border: mine ? 'none' : '1px solid #e0d4f5' }}>
+                      {m.message}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8, padding: 12, borderTop: '1px solid #e0d4f5' }}>
+              <input value={asstText} onChange={e => setAsstText(e.target.value)} onKeyDown={e => e.key === 'Enter' && sendAssistantMessage()} placeholder="Type a message..." style={{ flex: 1, padding: 10, border: '1px solid #e0d4f5', borderRadius: 8 }} />
+              <button onClick={sendAssistantMessage} style={{ background: '#0ea5e9', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>Send</button>
+            </div>
           </div>
         </div>
       )}

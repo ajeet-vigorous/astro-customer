@@ -105,6 +105,18 @@ export const remedyApi = {
   myRemedies: (data) => API.post('/customer/myRemedies', data || {}),
 };
 
+// App feedback (customer writes feedback about the app)
+export const feedbackApi = {
+  add: (data) => API.post('/customer/appReview/add', data),
+};
+
+// Assistant chat (when astrologer is busy/offline, chat with their assistant)
+export const assistantChatApi = {
+  getChatId: (data) => API.post('/astro/getAssistantChatId', data),
+  getMessages: (data) => API.post('/assistant/message/get', data),
+  sendMessage: (data) => API.post('/assistant/message/send', data),
+};
+
 // Astro Features
 export const astroApi = {
   numerology: (data) => API.post('/customer/numerology', data),
